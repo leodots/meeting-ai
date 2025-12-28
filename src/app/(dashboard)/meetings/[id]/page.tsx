@@ -8,12 +8,14 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
+  Download,
   FileText,
   Lightbulb,
   ListChecks,
   Loader2,
   MessageSquare,
   Play,
+  Printer,
   Trash2,
   Users,
 } from "lucide-react";
@@ -169,6 +171,22 @@ export default function MeetingDetailPage({
     }
   }
 
+  function exportMarkdown() {
+    window.open(`/api/meetings/${id}/export?format=md`, "_blank");
+  }
+
+  function exportPDF() {
+    // Open HTML version in new window for printing
+    const printWindow = window.open(`/api/meetings/${id}/export?format=html`, "_blank");
+    if (printWindow) {
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      };
+    }
+  }
+
   if (loading) {
     return (
       <PageContainer>
@@ -237,7 +255,7 @@ export default function MeetingDetailPage({
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {isPending && (
               <Button onClick={startProcessing} disabled={processing}>
                 {processing ? (
@@ -247,6 +265,18 @@ export default function MeetingDetailPage({
                 )}
                 {meeting.status === "FAILED" ? "Retry" : "Process"}
               </Button>
+            )}
+            {isCompleted && (
+              <>
+                <Button variant="outline" onClick={exportMarkdown}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Markdown
+                </Button>
+                <Button variant="outline" onClick={exportPDF}>
+                  <Printer className="mr-2 h-4 w-4" />
+                  PDF
+                </Button>
+              </>
             )}
             <Button
               variant="outline"

@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { LogOut, Menu, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import ThemeSwitcher from "@/components/theme-switcher";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -43,6 +44,7 @@ export function Header({ onMenuClick, className }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        <ThemeSwitcher />
         <Button
           variant="ghost"
           size="sm"
