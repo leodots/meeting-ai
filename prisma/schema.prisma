@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  meetings     Meeting[]
+}
+
+model Meeting {
+  id               String           @id @default(cuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title            String
+  description      String?
+  aiInstructions   String?          @db.Text // Custom instructions for AI analysis
+  language         Language         @default(ENGLISH)
+
+  // File information
+  originalFileName String
+  storagePath      String
+  fileSize         Int // bytes
+  duration         Int? // seconds (populated after processing)
+  mimeType         String
+
+  // Processing status
+  status           ProcessingStatus @default(PENDING)
+  processingError  String?
+
+  // Timestamps
+  recordedAt       DateTime?
+  uploadedAt       DateTime         @default(now())
+  processedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  // Relations
+  transcript       Transcript?
+  analysis         Analysis?
+  speakers         Speaker[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Transcript {
+  id          String      @id @default(cuid())
+  meetingId   String      @unique
+  meeting     Meeting     @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  // Raw AssemblyAI response (JSON)
+  rawResponse Json
+
+  // Formatted full transcript
+  fullText    String      @db.Text
+
+  // Individual utterances
+  utterances  Utterance[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Utterance {
+  id           String     @id @default(cuid())
+  transcriptId String
+  transcript   Transcript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+
+  speakerId    String
+  speaker      Speaker    @relation(fields: [speakerId], references: [id], onDelete: Cascade)
+
+  text         String     @db.Text
+  startTime    Float // seconds
+  endTime      Float // seconds
+  confidence   Float
+
+  orderIndex   Int // for maintaining order
+
+  @@index([transcriptId, orderIndex])
+}
+
+model Speaker {
+  id           String      @id @default(cuid())
+  meetingId    String
+  meeting      Meeting     @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  speakerIndex Int // 0, 1, 2... from AssemblyAI
+  label        String? // User-assigned name (e.g., "John")
+  color        String // For UI display (hex color)
+
+  utterances   Utterance[]
+
+  @@unique([meetingId, speakerIndex])
+  @@index([meetingId])
+}
+
+model Analysis {
+  id          String   @id @default(cuid())
+  meetingId   String   @unique
+  meeting     Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  // AI-generated content
+  summary     String   @db.Text
+
+  // Structured data (JSON arrays)
+  topics      Json // [{title, description, importance}]
+  keyPoints   Json // [{point, context, speakerIndex?}]
+  actionItems Json // [{item, assignee?, dueDate?, priority}]
+
+  // Raw Gemini response for debugging
+  rawResponse Json
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum ProcessingStatus {
+  PENDING
+  UPLOADING
+  TRANSCRIBING
+  ANALYZING
+  COMPLETED
+  FAILED
+}
+
+enum Language {
+  ENGLISH
+  PORTUGUESE_BR
+  SPANISH
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}

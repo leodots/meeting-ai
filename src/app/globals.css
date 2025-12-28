@@ -1,0 +1,186 @@
+@import "tailwindcss";
+
+/* Monochromatic Zinc Design System */
+:root {
+  /* Background */
+  --background: #fafafa;
+  --background-subtle: #f4f4f5;
+  --background-muted: #e4e4e7;
+
+  /* Foreground */
+  --foreground: #09090b;
+  --foreground-muted: #71717a;
+  --foreground-subtle: #a1a1aa;
+
+  /* Border */
+  --border: #e4e4e7;
+  --border-subtle: #f4f4f5;
+
+  /* Accent */
+  --accent: #18181b;
+  --accent-foreground: #fafafa;
+
+  /* Status Colors */
+  --success: #22c55e;
+  --success-foreground: #ffffff;
+  --warning: #eab308;
+  --warning-foreground: #ffffff;
+  --error: #ef4444;
+  --error-foreground: #ffffff;
+  --info: #3b82f6;
+  --info-foreground: #ffffff;
+
+  /* Speaker Colors (Monochromatic Spectrum) */
+  --speaker-1: #71717a;
+  --speaker-2: #52525b;
+  --speaker-3: #3f3f46;
+  --speaker-4: #27272a;
+  --speaker-5: #18181b;
+
+  /* Radius */
+  --radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Background */
+    --background: #09090b;
+    --background-subtle: #18181b;
+    --background-muted: #27272a;
+
+    /* Foreground */
+    --foreground: #fafafa;
+    --foreground-muted: #a1a1aa;
+    --foreground-subtle: #71717a;
+
+    /* Border */
+    --border: #27272a;
+    --border-subtle: #18181b;
+
+    /* Accent */
+    --accent: #fafafa;
+    --accent-foreground: #09090b;
+
+    /* Speaker Colors (Monochromatic Spectrum - Inverted) */
+    --speaker-1: #a1a1aa;
+    --speaker-2: #d4d4d8;
+    --speaker-3: #e4e4e7;
+    --speaker-4: #f4f4f5;
+    --speaker-5: #fafafa;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-subtle);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground-subtle);
+}
+
+/* Selection */
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Animation keyframes */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Utility classes */
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+  background: linear-gradient(
+    90deg,
+    var(--background-subtle) 0%,
+    var(--background-muted) 50%,
+    var(--background-subtle) 100%
+  );
+  background-size: 200% 100%;
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s ease-in-out infinite;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+/* Code blocks */
+code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.875em;
+  background: var(--background-subtle);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+}

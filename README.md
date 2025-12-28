@@ -1,36 +1,140 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Meeting AI
+
+A self-hosted meeting transcription and analysis platform. Upload audio recordings, get accurate transcriptions with speaker identification, and receive intelligent summaries with action items.
+
+## Features
+
+- **Audio Transcription** — Supports MP3, M4A, and WAV files up to 100MB
+- **Speaker Diarization** — Automatically identifies and labels different speakers
+- **Language Detection** — Supports 99 languages with automatic detection
+- **AI Analysis** — Generates summaries, key points, topics, and action items
+- **Custom Instructions** — Guide the AI analysis with specific prompts
+- **Speaker Identification** — Automatically detects speaker names from conversation context
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Framework | Next.js 16 (App Router) |
+| Frontend | React 19, TypeScript 5 |
+| Styling | Tailwind CSS 4, shadcn/ui |
+| Database | PostgreSQL 16, Prisma ORM |
+| Auth | NextAuth v5 |
+| Transcription | AssemblyAI |
+| AI Analysis | Google Gemini |
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 20+
+- PostgreSQL 16+ (or Docker)
+- API keys for [AssemblyAI](https://www.assemblyai.com) and [Google AI Studio](https://aistudio.google.com)
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/yourusername/meeting-ai.git
+cd meeting-ai
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Generate required secrets:
+```bash
+# Encryption key for API keys
+openssl rand -hex 32
 
-## Learn More
+# Auth secret
+openssl rand -base64 32
+```
 
-To learn more about Next.js, take a look at the following resources:
+5. Update `.env.local` with your values:
+```env
+DATABASE_URL="postgresql://postgres:password@localhost:5432/meeting_ai"
+ENCRYPTION_KEY="<your-generated-hex-key>"
+AUTH_SECRET="<your-generated-base64-key>"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+6. Start PostgreSQL (using Docker):
+```bash
+docker run -d \
+  --name postgres \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=meeting_ai \
+  -p 5432:5432 \
+  postgres:16
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+7. Initialize the database:
+```bash
+npx prisma db push
+```
 
-## Deploy on Vercel
+8. Start the development server:
+```bash
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+9. Open [http://localhost:3000](http://localhost:3000) and log in with the default credentials from your `.env.local`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+10. Navigate to **Settings** to configure your AssemblyAI and Gemini API keys.
+
+## Usage
+
+1. **Upload** — Drag and drop an audio file or click to browse
+2. **Add Instructions** (optional) — Provide context or specific analysis requirements
+3. **Process** — The system transcribes and analyzes automatically
+4. **Review** — View the transcript with speaker labels, summary, topics, and action items
+
+## Project Structure
+
+```
+meeting-ai/
+├── src/
+│   ├── app/                 # Next.js App Router
+│   │   ├── (auth)/          # Login pages
+│   │   ├── (dashboard)/     # Protected routes
+│   │   └── api/             # API endpoints
+│   ├── components/          # React components
+│   └── lib/
+│       ├── config/          # App configuration
+│       ├── db/              # Prisma client
+│       ├── services/        # Business logic
+│       └── utils/           # Helpers
+├── prisma/                  # Database schema
+└── docker/                  # Docker configuration
+```
+
+## Docker Deployment
+
+Build and run with Docker Compose:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d
+```
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `ENCRYPTION_KEY` | 32-byte hex key for encrypting API keys |
+| `AUTH_SECRET` | NextAuth.js secret |
+| `AUTH_EMAIL` | Default admin email |
+| `AUTH_PASSWORD` | Default admin password |
+
+API keys (AssemblyAI and Gemini) are configured through the Settings page and stored encrypted in the database.
+
+## License
+
+MIT
