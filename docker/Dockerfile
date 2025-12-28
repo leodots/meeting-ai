@@ -52,14 +52,10 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy prisma config, schema and client (needed for migrations)
+# Copy prisma files and ALL node_modules (needed for migrations)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/valibot ./node_modules/valibot
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Copy entrypoint script
 COPY --chown=nextjs:nodejs docker/entrypoint.sh ./entrypoint.sh
