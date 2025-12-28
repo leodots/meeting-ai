@@ -215,9 +215,9 @@ export async function GET(
     const analysisData = meeting.analysis
       ? {
           summary: meeting.analysis.summary,
-          topics: meeting.analysis.topics as Topic[],
-          keyPoints: meeting.analysis.keyPoints as KeyPoint[],
-          actionItems: meeting.analysis.actionItems as ActionItem[],
+          topics: meeting.analysis.topics as unknown as Topic[],
+          keyPoints: meeting.analysis.keyPoints as unknown as KeyPoint[],
+          actionItems: meeting.analysis.actionItems as unknown as ActionItem[],
         }
       : null;
 
