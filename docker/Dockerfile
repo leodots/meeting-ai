@@ -51,18 +51,24 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy prisma schema (needed for migrations)
+# Copy prisma schema and client (needed for migrations)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+
+# Copy entrypoint script
+COPY --chown=nextjs:nodejs docker/entrypoint.sh ./entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 # Create uploads directory
-RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
+RUN mkdir -p /app/meeting-ai/uploads && chown nextjs:nodejs /app/meeting-ai/uploads
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 3003
 
-ENV PORT=3000
+ENV PORT=3003
 ENV HOSTNAME="0.0.0.0"
 
-# Start the server
-CMD ["node", "server.js"]
+# Start with entrypoint (runs migrations then starts server)
+CMD ["./entrypoint.sh"]
