@@ -16,16 +16,16 @@ RUN npm ci
 FROM base AS builder
 WORKDIR /app
 
+# Set dummy DATABASE_URL for build time (needed for Prisma and Next.js build)
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+ENV NEXT_TELEMETRY_DISABLED=1
+
 # Copy node_modules from deps
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma client (with dummy DATABASE_URL for build time)
-ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+# Generate Prisma client
 RUN npx prisma generate
-
-# Disable telemetry
-ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build Next.js
 RUN npm run build
