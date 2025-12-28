@@ -3,6 +3,14 @@ import Credentials from "next-auth/providers/credentials";
 import { compare, hash } from "bcryptjs";
 import { prisma } from "./src/lib/db/prisma";
 
+// Validate AUTH_SECRET is properly configured
+if (!process.env.AUTH_SECRET || process.env.AUTH_SECRET.trim() === "") {
+  throw new Error(
+    "AUTH_SECRET environment variable is required. " +
+    "Generate one with: openssl rand -base64 32"
+  );
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
@@ -60,6 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   session: {
     strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 hours
   },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
