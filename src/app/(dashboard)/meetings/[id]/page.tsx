@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -159,10 +159,25 @@ export default function MeetingDetailPage({
   const [editingSpeakerLabel, setEditingSpeakerLabel] = useState("");
   const [savingSpeaker, setSavingSpeaker] = useState(false);
 
+  const fetchMeeting = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/meetings/${id}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch meeting");
+      }
+      const data = await response.json();
+      setMeeting(data);
+    } catch {
+      setError("Failed to fetch meeting");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchMeeting();
     fetchProjectsAndTags();
-  }, [id]);
+  }, [fetchMeeting]);
 
   // Sync selected project/tags when meeting loads
   useEffect(() => {
@@ -391,22 +406,7 @@ export default function MeetingDetailPage({
       const interval = setInterval(fetchMeeting, 3000);
       return () => clearInterval(interval);
     }
-  }, [meeting?.status]);
-
-  async function fetchMeeting() {
-    try {
-      const response = await fetch(`/api/meetings/${id}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch meeting");
-      }
-      const data = await response.json();
-      setMeeting(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [meeting?.status, fetchMeeting]);
 
   async function startProcessing() {
     setProcessing(true);
@@ -454,7 +454,7 @@ export default function MeetingDetailPage({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success("Markdown exported");
-    } catch (err) {
+    } catch {
       toast.error("Failed to export markdown");
     }
   }
@@ -474,7 +474,7 @@ export default function MeetingDetailPage({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success("HTML exported");
-    } catch (err) {
+    } catch {
       toast.error("Failed to export HTML");
     }
   }
@@ -1050,7 +1050,7 @@ export default function MeetingDetailPage({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {meeting.transcript.utterances.map((utterance, i) => (
+                  {meeting.transcript.utterances.map((utterance) => (
                     <div
                       key={utterance.id}
                       className="flex gap-4 rounded-lg p-3 hover:bg-zinc-50 dark:hover:bg-zinc-900"

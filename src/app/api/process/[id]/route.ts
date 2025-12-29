@@ -3,6 +3,7 @@ import { auth } from "../../../../../auth";
 import { prisma } from "@/lib/db/prisma";
 import { processMeeting } from "@/lib/services/processing";
 import { ProcessingStatus } from "@prisma/client";
+import { apiRateLimiter, RATE_LIMITS } from "@/lib/rate-limit";
 
 // POST /api/process/[id] - Start processing a meeting
 export async function POST(
@@ -13,6 +14,20 @@ export async function POST(
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limit processing requests per user
+    const rateLimitResult = apiRateLimiter.check(
+      `process:${session.user.id}`,
+      RATE_LIMITS.process.limit,
+      RATE_LIMITS.process.windowMs
+    );
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: `Too many processing requests. Try again in ${rateLimitResult.resetIn} seconds.` },
+        { status: 429, headers: { "Retry-After": String(rateLimitResult.resetIn) } }
+      );
     }
 
     const { id } = await params;

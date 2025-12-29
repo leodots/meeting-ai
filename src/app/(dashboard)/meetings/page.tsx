@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -105,11 +105,6 @@ export default function MeetingsPage() {
   const tagId = searchParams.get("tag");
   const showFavorites = searchParams.get("favorite") === "true";
 
-  useEffect(() => {
-    fetchMeetings();
-    fetchTags();
-  }, [projectId, tagId, showFavorites]);
-
   // Fetch active project info if filtered by project
   useEffect(() => {
     async function fetchProject() {
@@ -130,7 +125,7 @@ export default function MeetingsPage() {
     fetchProject();
   }, [projectId]);
 
-  async function fetchTags() {
+  const fetchTags = useCallback(async () => {
     try {
       const response = await fetch("/api/tags");
       if (response.ok) {
@@ -140,9 +135,9 @@ export default function MeetingsPage() {
     } catch (error) {
       console.error("Failed to fetch tags:", error);
     }
-  }
+  }, []);
 
-  async function fetchMeetings() {
+  const fetchMeetings = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -161,7 +156,12 @@ export default function MeetingsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [projectId, tagId, showFavorites]);
+
+  useEffect(() => {
+    fetchMeetings();
+    fetchTags();
+  }, [fetchMeetings, fetchTags]);
 
   const clearFilters = () => {
     router.push("/meetings");
