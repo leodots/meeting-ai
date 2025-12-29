@@ -4,6 +4,7 @@ import { useEffect, useState, use, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
+import ReactMarkdown from "react-markdown";
 import {
   ArrowLeft,
   Calendar,
@@ -997,10 +998,10 @@ export default function MeetingDetailPage({
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="prose prose-zinc dark:prose-invert max-w-none">
-                      <p className="whitespace-pre-wrap text-zinc-600 dark:text-zinc-300">
+                    <div className="prose prose-zinc dark:prose-invert max-w-none prose-headings:text-zinc-800 dark:prose-headings:text-zinc-200 prose-p:text-zinc-600 dark:prose-p:text-zinc-300 prose-strong:text-zinc-800 dark:prose-strong:text-zinc-200 prose-li:text-zinc-600 dark:prose-li:text-zinc-300">
+                      <ReactMarkdown>
                         {meeting.analysis.meetingDocument}
-                      </p>
+                      </ReactMarkdown>
                     </div>
                   </CardContent>
                 </Card>
