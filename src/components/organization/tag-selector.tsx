@@ -159,6 +159,7 @@ export function TagSelector({
           >
             {filteredTags.map((tag) => (
               <button
+                type="button"
                 key={tag.id}
                 onClick={() => handleSelect(tag)}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900"
@@ -175,6 +176,7 @@ export function TagSelector({
 
             {canCreateNew && (
               <button
+                type="button"
                 onClick={handleCreate}
                 disabled={isCreating}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"

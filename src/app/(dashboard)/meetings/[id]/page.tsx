@@ -93,6 +93,7 @@ interface Analysis {
   topics: Topic[];
   keyPoints: KeyPoint[];
   actionItems: ActionItem[];
+  meetingDocument?: string;
 }
 
 interface Meeting {
@@ -972,6 +973,39 @@ export default function MeetingDetailPage({
                 </CardContent>
               </Card>
             </motion.div>
+
+            {/* Meeting Document */}
+            {meeting.analysis.meetingDocument && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="lg:col-span-2"
+              >
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <FileText className="h-5 w-5 text-zinc-400" />
+                        Meeting Document
+                      </CardTitle>
+                      <CopyButton
+                        text={meeting.analysis.meetingDocument}
+                        label="Copy"
+                        successMessage="Document copied"
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="prose prose-zinc dark:prose-invert max-w-none">
+                      <p className="whitespace-pre-wrap text-zinc-600 dark:text-zinc-300">
+                        {meeting.analysis.meetingDocument}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </div>
         )}
 

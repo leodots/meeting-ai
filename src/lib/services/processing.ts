@@ -99,6 +99,7 @@ export async function processMeeting(meetingId: string): Promise<void> {
         data: {
           meetingId,
           summary: analysisResult.summary,
+          meetingDocument: analysisResult.meetingDocument || null,
           topics: JSON.parse(JSON.stringify(analysisResult.topics)),
           keyPoints: JSON.parse(JSON.stringify(analysisResult.keyPoints)),
           actionItems: JSON.parse(JSON.stringify(analysisResult.actionItems)),

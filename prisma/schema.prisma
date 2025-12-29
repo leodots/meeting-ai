@@ -115,23 +115,24 @@ model Speaker {
 }
 
 model Analysis {
-  id          String   @id @default(cuid())
-  meetingId   String   @unique
-  meeting     Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  meetingId       String   @unique
+  meeting         Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 
   // AI-generated content
-  summary     String   @db.Text
+  summary         String   @db.Text
+  meetingDocument String?  @db.Text // Comprehensive formal document of the meeting
 
   // Structured data (JSON arrays)
-  topics      Json // [{title, description, importance}]
-  keyPoints   Json // [{point, context, speakerIndex?}]
-  actionItems Json // [{item, assignee?, dueDate?, priority}]
+  topics          Json // [{title, description, importance}]
+  keyPoints       Json // [{point, context, speakerIndex?}]
+  actionItems     Json // [{item, assignee?, dueDate?, priority}]
 
   // Raw Gemini response for debugging
-  rawResponse Json
+  rawResponse     Json
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 enum ProcessingStatus {

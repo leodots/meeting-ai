@@ -50,7 +50,8 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
   const fetchProjects = useCallback(async () => {
     try {
-      const response = await fetch("/api/projects");
+      // Add cache-busting to ensure fresh data
+      const response = await fetch(`/api/projects?_t=${Date.now()}`);
       if (response.ok) {
         const data = await response.json();
         setProjects(data);
