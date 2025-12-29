@@ -17,14 +17,18 @@ import {
   ListChecks,
   Loader2,
   MessageSquare,
+  Pencil,
   Play,
   Printer,
+  Star,
   Trash2,
   Users,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/components/layout";
 import { ProjectSelector, TagSelector } from "@/components/organization";
 import { AlertDialog } from "@/components/ui/alert-dialog";
@@ -97,6 +101,7 @@ interface Meeting {
   language: string;
   status: string;
   duration: number | null;
+  favorite: boolean;
   uploadedAt: string;
   processedAt: string | null;
   transcript: Transcript | null;
@@ -142,6 +147,17 @@ export default function MeetingDetailPage({
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [savingOrganization, setSavingOrganization] = useState(false);
+
+  // Title/Description editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
+
+  // Speaker editing state
+  const [editingSpeakerId, setEditingSpeakerId] = useState<string | null>(null);
+  const [editingSpeakerLabel, setEditingSpeakerLabel] = useState("");
+  const [savingSpeaker, setSavingSpeaker] = useState(false);
 
   useEffect(() => {
     fetchMeeting();
@@ -243,6 +259,117 @@ export default function MeetingDetailPage({
       setSelectedTags(meeting.tags.map((t) => t.tag));
     }
     setIsEditingOrganization(false);
+  }
+
+  // Toggle favorite
+  async function toggleFavorite() {
+    if (!meeting) return;
+    const newFavorite = !meeting.favorite;
+
+    // Optimistic update
+    setMeeting((prev) => prev ? { ...prev, favorite: newFavorite } : null);
+
+    try {
+      const response = await fetch(`/api/meetings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ favorite: newFavorite }),
+      });
+      if (!response.ok) throw new Error("Failed to update");
+      toast.success(newFavorite ? "Added to favorites" : "Removed from favorites");
+    } catch {
+      // Revert on error
+      setMeeting((prev) => prev ? { ...prev, favorite: !newFavorite } : null);
+      toast.error("Failed to update favorite");
+    }
+  }
+
+  // Start editing title/description
+  function startEditingTitle() {
+    if (meeting) {
+      setEditTitle(meeting.title);
+      setEditDescription(meeting.description || "");
+      setIsEditingTitle(true);
+    }
+  }
+
+  // Save title/description
+  async function saveTitle() {
+    if (!meeting || !editTitle.trim()) return;
+    setSavingTitle(true);
+    try {
+      const response = await fetch(`/api/meetings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          description: editDescription.trim() || null,
+        }),
+      });
+      if (response.ok) {
+        setMeeting((prev) => prev ? { ...prev, title: editTitle.trim(), description: editDescription.trim() || null } : null);
+        setIsEditingTitle(false);
+        toast.success("Meeting updated");
+      } else {
+        toast.error("Failed to update meeting");
+      }
+    } catch {
+      toast.error("Failed to update meeting");
+    } finally {
+      setSavingTitle(false);
+    }
+  }
+
+  function cancelEditTitle() {
+    setIsEditingTitle(false);
+    setEditTitle("");
+    setEditDescription("");
+  }
+
+  // Start editing speaker label
+  function startEditingSpeaker(speaker: Speaker) {
+    setEditingSpeakerId(speaker.id);
+    setEditingSpeakerLabel(speaker.label || "");
+  }
+
+  // Save speaker label
+  async function saveSpeakerLabel() {
+    if (!editingSpeakerId) return;
+    setSavingSpeaker(true);
+    try {
+      const response = await fetch(`/api/meetings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          speakers: [{ id: editingSpeakerId, label: editingSpeakerLabel.trim() || null }],
+        }),
+      });
+      if (response.ok) {
+        setMeeting((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            speakers: prev.speakers.map((s) =>
+              s.id === editingSpeakerId ? { ...s, label: editingSpeakerLabel.trim() || null } : s
+            ),
+          };
+        });
+        toast.success("Speaker renamed");
+        setEditingSpeakerId(null);
+        setEditingSpeakerLabel("");
+      } else {
+        toast.error("Failed to rename speaker");
+      }
+    } catch {
+      toast.error("Failed to rename speaker");
+    } finally {
+      setSavingSpeaker(false);
+    }
+  }
+
+  function cancelEditSpeaker() {
+    setEditingSpeakerId(null);
+    setEditingSpeakerLabel("");
   }
 
   // Poll for updates while processing
@@ -379,15 +506,75 @@ export default function MeetingDetailPage({
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-                {meeting.title}
-              </h1>
-              {meeting.description && (
-                <p className="mt-1 text-zinc-500 dark:text-zinc-400">
-                  {meeting.description}
-                </p>
-              )}
+            <div className="flex-1">
+              <AnimatePresence mode="wait">
+                {isEditingTitle ? (
+                  <motion.div
+                    key="editing-title"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-3"
+                  >
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="Meeting title"
+                      className="text-lg font-semibold"
+                      autoFocus
+                    />
+                    <Textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      placeholder="Description (optional)"
+                      rows={2}
+                      className="resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={saveTitle} disabled={savingTitle || !editTitle.trim()}>
+                        {savingTitle ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}
+                        Save
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={cancelEditTitle} disabled={savingTitle}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div key="display-title" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+                        {meeting.title}
+                      </h1>
+                      <button
+                        onClick={toggleFavorite}
+                        className={cn(
+                          "rounded-full p-1.5 transition-colors",
+                          meeting.favorite
+                            ? "text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+                            : "text-zinc-300 hover:bg-zinc-100 hover:text-yellow-500 dark:text-zinc-600 dark:hover:bg-zinc-800"
+                        )}
+                        title={meeting.favorite ? "Remove from favorites" : "Add to favorites"}
+                      >
+                        <Star className={cn("h-5 w-5", meeting.favorite && "fill-current")} />
+                      </button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                        onClick={startEditingTitle}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {meeting.description && (
+                      <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+                        {meeting.description}
+                      </p>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-zinc-500 dark:text-zinc-400">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
@@ -792,20 +979,60 @@ export default function MeetingDetailPage({
                       successMessage="Transcript copied"
                     />
                   </div>
-                  {/* Speaker Legend */}
+                  {/* Speaker Legend with Rename */}
                   <div className="flex flex-wrap gap-3">
                     {meeting.speakers.map((speaker) => (
-                      <div
-                        key={speaker.id}
-                        className="flex items-center gap-2 text-sm"
-                      >
+                      <div key={speaker.id} className="flex items-center gap-2 text-sm">
                         <span
                           className="h-3 w-3 rounded-full"
                           style={{ backgroundColor: speaker.color }}
                         />
-                        <span className="text-zinc-600 dark:text-zinc-300">
-                          {speaker.label || `Speaker ${speaker.speakerIndex + 1}`}
-                        </span>
+                        {editingSpeakerId === speaker.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              value={editingSpeakerLabel}
+                              onChange={(e) => setEditingSpeakerLabel(e.target.value)}
+                              placeholder={`Speaker ${speaker.speakerIndex + 1}`}
+                              className="h-7 w-32 text-sm"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveSpeakerLabel();
+                                if (e.key === "Escape") cancelEditSpeaker();
+                              }}
+                            />
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={saveSpeakerLabel}
+                              disabled={savingSpeaker}
+                            >
+                              {savingSpeaker ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Check className="h-3 w-3" />
+                              )}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={cancelEditSpeaker}
+                              disabled={savingSpeaker}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => startEditingSpeaker(speaker)}
+                            className="group flex items-center gap-1 rounded px-1 py-0.5 text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            title="Click to rename"
+                          >
+                            {speaker.label || `Speaker ${speaker.speakerIndex + 1}`}
+                            <Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -11,6 +11,7 @@ import {
   Mic,
   Plus,
   Search,
+  Star,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { PageContainer } from "@/components/layout";
 import { TagBadge } from "@/components/organization";
 import { SkeletonMeetingList } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Project {
   id: string;
@@ -41,6 +43,7 @@ interface Meeting {
   language: string;
   status: "PENDING" | "TRANSCRIBING" | "ANALYZING" | "COMPLETED" | "FAILED";
   duration: number | null;
+  favorite: boolean;
   uploadedAt: string;
   processedAt: string | null;
   createdAt: string;
@@ -100,11 +103,12 @@ export default function MeetingsPage() {
 
   const projectId = searchParams.get("project");
   const tagId = searchParams.get("tag");
+  const showFavorites = searchParams.get("favorite") === "true";
 
   useEffect(() => {
     fetchMeetings();
     fetchTags();
-  }, [projectId, tagId]);
+  }, [projectId, tagId, showFavorites]);
 
   // Fetch active project info if filtered by project
   useEffect(() => {
@@ -144,6 +148,7 @@ export default function MeetingsPage() {
       const params = new URLSearchParams();
       if (projectId) params.set("project", projectId);
       if (tagId) params.set("tag", tagId);
+      if (showFavorites) params.set("favorite", "true");
 
       const response = await fetch(`/api/meetings?${params.toString()}`);
       if (!response.ok) {
@@ -170,10 +175,51 @@ export default function MeetingsPage() {
   };
 
   const removeTagFilter = () => {
-    if (projectId) {
-      router.push(`/meetings?project=${projectId}`);
-    } else {
-      router.push("/meetings");
+    const params = new URLSearchParams();
+    if (projectId) params.set("project", projectId);
+    if (showFavorites) params.set("favorite", "true");
+    router.push(`/meetings?${params.toString()}`);
+  };
+
+  const toggleFavoritesFilter = () => {
+    const params = new URLSearchParams();
+    if (projectId) params.set("project", projectId);
+    if (tagId) params.set("tag", tagId);
+    if (!showFavorites) params.set("favorite", "true");
+    router.push(`/meetings?${params.toString()}`);
+  };
+
+  const toggleFavorite = async (e: React.MouseEvent, meetingId: string, currentFavorite: boolean) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Optimistically update UI
+    setMeetings((prev) =>
+      prev.map((m) =>
+        m.id === meetingId ? { ...m, favorite: !currentFavorite } : m
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/meetings/${meetingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ favorite: !currentFavorite }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update favorite");
+      }
+
+      toast.success(currentFavorite ? "Removed from favorites" : "Added to favorites");
+    } catch {
+      // Revert on error
+      setMeetings((prev) =>
+        prev.map((m) =>
+          m.id === meetingId ? { ...m, favorite: currentFavorite } : m
+        )
+      );
+      toast.error("Failed to update favorite");
     }
   };
 
@@ -222,7 +268,7 @@ export default function MeetingsPage() {
 
         {/* Active Filters */}
         <AnimatePresence>
-          {(projectId || tagId) && (
+          {(projectId || tagId || showFavorites) && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
@@ -233,6 +279,18 @@ export default function MeetingsPage() {
                 <span className="text-sm text-zinc-500 dark:text-zinc-400">
                   Filters:
                 </span>
+                {showFavorites && (
+                  <motion.button
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    onClick={toggleFavoritesFilter}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-yellow-300 bg-yellow-50 px-2.5 py-1 text-sm font-medium text-yellow-700 transition-colors hover:bg-yellow-100 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50"
+                  >
+                    <Star className="h-3.5 w-3.5 fill-current" />
+                    Favorites
+                    <X className="h-3.5 w-3.5" />
+                  </motion.button>
+                )}
                 {activeProject && (
                   <motion.button
                     initial={{ scale: 0.8, opacity: 0 }}
@@ -287,6 +345,18 @@ export default function MeetingsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          <Button
+            variant={showFavorites ? "default" : "outline"}
+            size="sm"
+            onClick={toggleFavoritesFilter}
+            className={cn(
+              "gap-1.5",
+              showFavorites && "bg-yellow-500 text-white hover:bg-yellow-600"
+            )}
+          >
+            <Star className={cn("h-4 w-4", showFavorites && "fill-current")} />
+            Favorites
+          </Button>
           {allTags.length > 0 && !tagId && (
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-zinc-400 dark:text-zinc-500">Tags:</span>
@@ -407,6 +477,20 @@ export default function MeetingsPage() {
                           )}
                         </div>
                       </div>
+                      <button
+                        onClick={(e) => toggleFavorite(e, meeting.id, meeting.favorite)}
+                        className={cn(
+                          "shrink-0 rounded-full p-2 transition-colors",
+                          meeting.favorite
+                            ? "text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+                            : "text-zinc-300 hover:bg-zinc-100 hover:text-yellow-500 dark:text-zinc-600 dark:hover:bg-zinc-800"
+                        )}
+                        title={meeting.favorite ? "Remove from favorites" : "Add to favorites"}
+                      >
+                        <Star
+                          className={cn("h-5 w-5", meeting.favorite && "fill-current")}
+                        />
+                      </button>
                     </CardContent>
                   </Card>
                 </Link>

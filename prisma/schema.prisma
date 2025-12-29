@@ -26,6 +26,7 @@ model Meeting {
   description      String?
   aiInstructions   String?          @db.Text // Custom instructions for AI analysis
   language         Language         @default(ENGLISH)
+  favorite         Boolean          @default(false)
 
   // Organization
   projectId        String?
@@ -59,6 +60,7 @@ model Meeting {
   @@index([projectId])
   @@index([status])
   @@index([createdAt])
+  @@index([favorite])
 }
 
 model Transcript {
