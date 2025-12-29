@@ -23,20 +23,36 @@ function SkeletonCard({ className }: { className?: string }) {
         className
       )}
     >
-      <div className="flex items-center gap-4">
-        <Skeleton className="h-12 w-12 rounded-full" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-3 w-1/2" />
+      {/* Header */}
+      <div className="mb-3 flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-10 rounded-lg" />
+          <Skeleton className="h-5 w-16 rounded-full" />
         </div>
+        <Skeleton className="h-6 w-6 rounded-full" />
+      </div>
+      {/* Title & Description */}
+      <div className="mb-3 space-y-2">
+        <Skeleton className="h-5 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+      </div>
+      {/* Tags */}
+      <div className="mb-3 flex gap-1">
+        <Skeleton className="h-4 w-12 rounded-full" />
+        <Skeleton className="h-4 w-14 rounded-full" />
+      </div>
+      {/* Footer */}
+      <div className="flex gap-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-3 w-14" />
       </div>
     </div>
   );
 }
 
-function SkeletonMeetingList({ count = 5 }: { count?: number }) {
+function SkeletonMeetingList({ count = 6 }: { count?: number }) {
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: count }).map((_, i) => (
         <SkeletonCard key={i} />
       ))}

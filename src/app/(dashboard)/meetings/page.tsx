@@ -401,96 +401,102 @@ export default function MeetingsPage() {
           </Card>
         )}
 
-        {/* Meetings List */}
+        {/* Meetings Grid */}
         {!loading && !error && filteredMeetings.length > 0 && (
-          <div className="grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredMeetings.map((meeting, index) => (
               <motion.div
                 key={meeting.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
+                transition={{ delay: index * 0.03 }}
               >
                 <Link href={`/meetings/${meeting.id}`}>
-                  <Card className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                    <CardContent className="flex items-center gap-4 py-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                        {meeting.project?.icon ? (
-                          <span className="text-xl">{meeting.project.icon}</span>
-                        ) : meeting.project ? (
-                          <Folder className="h-5 w-5" style={{ color: meeting.project.color }} />
-                        ) : (
-                          <Mic className="h-5 w-5 text-zinc-500 dark:text-zinc-400" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
-                            {meeting.title}
-                          </h3>
+                  <Card className="h-full transition-all hover:bg-zinc-50 hover:shadow-md dark:hover:bg-zinc-900">
+                    <CardContent className="flex h-full flex-col p-4">
+                      {/* Header: Icon + Status + Favorite */}
+                      <div className="mb-3 flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                            {meeting.project?.icon ? (
+                              <span className="text-lg">{meeting.project.icon}</span>
+                            ) : meeting.project ? (
+                              <Folder className="h-4 w-4" style={{ color: meeting.project.color }} />
+                            ) : (
+                              <Mic className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                            )}
+                          </div>
                           <span
                             className={cn(
-                              "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+                              "rounded-full px-2 py-0.5 text-xs font-medium",
                               statusConfig[meeting.status].className
                             )}
                           >
                             {statusConfig[meeting.status].label}
                           </span>
                         </div>
+                        <button
+                          onClick={(e) => toggleFavorite(e, meeting.id, meeting.favorite)}
+                          className={cn(
+                            "shrink-0 rounded-full p-1.5 transition-colors",
+                            meeting.favorite
+                              ? "text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+                              : "text-zinc-300 hover:bg-zinc-100 hover:text-yellow-500 dark:text-zinc-600 dark:hover:bg-zinc-800"
+                          )}
+                          title={meeting.favorite ? "Remove from favorites" : "Add to favorites"}
+                        >
+                          <Star className={cn("h-4 w-4", meeting.favorite && "fill-current")} />
+                        </button>
+                      </div>
+
+                      {/* Title & Description */}
+                      <div className="mb-3 flex-1">
+                        <h3 className="line-clamp-2 font-semibold text-zinc-900 dark:text-zinc-50">
+                          {meeting.title}
+                        </h3>
                         {meeting.description && (
-                          <p className="mt-0.5 truncate text-sm text-zinc-500 dark:text-zinc-400">
+                          <p className="mt-1 line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">
                             {meeting.description}
                           </p>
                         )}
-                        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                          <div className="flex items-center gap-4 text-xs text-zinc-400 dark:text-zinc-500">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {new Date(meeting.uploadedAt).toLocaleDateString()}
+                      </div>
+
+                      {/* Tags */}
+                      {meeting.tags.length > 0 && (
+                        <div className="mb-3 flex flex-wrap gap-1">
+                          {meeting.tags.slice(0, 3).map(({ tag }) => (
+                            <span
+                              key={tag.id}
+                              className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                              style={{
+                                backgroundColor: `${tag.color}20`,
+                                color: tag.color,
+                              }}
+                            >
+                              {tag.name}
                             </span>
-                            {meeting.duration && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {formatDuration(meeting.duration)}
-                              </span>
-                            )}
-                          </div>
-                          {meeting.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {meeting.tags.map(({ tag }) => (
-                                <span
-                                  key={tag.id}
-                                  className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-                                  style={{
-                                    backgroundColor: `${tag.color}20`,
-                                    color: tag.color,
-                                  }}
-                                >
-                                  <span
-                                    className="h-1 w-1 rounded-full"
-                                    style={{ backgroundColor: tag.color }}
-                                  />
-                                  {tag.name}
-                                </span>
-                              ))}
-                            </div>
+                          ))}
+                          {meeting.tags.length > 3 && (
+                            <span className="text-[10px] text-zinc-400">
+                              +{meeting.tags.length - 3}
+                            </span>
                           )}
                         </div>
-                      </div>
-                      <button
-                        onClick={(e) => toggleFavorite(e, meeting.id, meeting.favorite)}
-                        className={cn(
-                          "shrink-0 rounded-full p-2 transition-colors",
-                          meeting.favorite
-                            ? "text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
-                            : "text-zinc-300 hover:bg-zinc-100 hover:text-yellow-500 dark:text-zinc-600 dark:hover:bg-zinc-800"
+                      )}
+
+                      {/* Footer: Date & Duration */}
+                      <div className="flex items-center gap-3 border-t border-zinc-100 pt-3 text-xs text-zinc-400 dark:border-zinc-800 dark:text-zinc-500">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(meeting.uploadedAt).toLocaleDateString()}
+                        </span>
+                        {meeting.duration && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDuration(meeting.duration)}
+                          </span>
                         )}
-                        title={meeting.favorite ? "Remove from favorites" : "Add to favorites"}
-                      >
-                        <Star
-                          className={cn("h-5 w-5", meeting.favorite && "fill-current")}
-                        />
-                      </button>
+                      </div>
                     </CardContent>
                   </Card>
                 </Link>

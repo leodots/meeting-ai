@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -36,6 +36,9 @@ const navigation = [
   { name: "New Meeting", href: "/meetings/new", icon: Plus },
 ];
 
+// Custom event name for sidebar refresh
+export const SIDEBAR_REFRESH_EVENT = "sidebar-refresh";
+
 export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -45,22 +48,35 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
   const activeProjectId = searchParams.get("project");
 
-  useEffect(() => {
-    async function fetchProjects() {
-      try {
-        const response = await fetch("/api/projects");
-        if (response.ok) {
-          const data = await response.json();
-          setProjects(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch projects:", error);
-      } finally {
-        setIsLoadingProjects(false);
+  const fetchProjects = useCallback(async () => {
+    try {
+      const response = await fetch("/api/projects");
+      if (response.ok) {
+        const data = await response.json();
+        setProjects(data);
       }
+    } catch (error) {
+      console.error("Failed to fetch projects:", error);
+    } finally {
+      setIsLoadingProjects(false);
     }
-    fetchProjects();
   }, []);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
+
+  // Listen for sidebar refresh events (e.g., when a meeting is deleted)
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchProjects();
+    };
+
+    window.addEventListener(SIDEBAR_REFRESH_EVENT, handleRefresh);
+    return () => {
+      window.removeEventListener(SIDEBAR_REFRESH_EVENT, handleRefresh);
+    };
+  }, [fetchProjects]);
 
   const sidebarContent = (
     <div className="flex h-full flex-col">

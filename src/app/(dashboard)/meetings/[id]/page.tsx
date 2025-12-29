@@ -34,6 +34,7 @@ import { ProjectSelector, TagSelector } from "@/components/organization";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { CopyButton } from "@/components/ui/copy-button";
 import { SkeletonMeetingDetail } from "@/components/ui/skeleton";
+import { SIDEBAR_REFRESH_EVENT } from "@/components/layout/sidebar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -430,6 +431,8 @@ export default function MeetingDetailPage({
       if (!response.ok) {
         throw new Error("Failed to delete meeting");
       }
+      // Refresh sidebar counts
+      window.dispatchEvent(new Event(SIDEBAR_REFRESH_EVENT));
       toast.success("Meeting deleted");
       router.push("/meetings");
     } catch (err) {
