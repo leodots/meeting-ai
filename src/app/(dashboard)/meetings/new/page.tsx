@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "motion/react";
@@ -22,7 +22,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageContainer } from "@/components/layout";
+import { ProjectSelector, TagSelector } from "@/components/organization";
 import { cn } from "@/lib/utils";
+
+interface Project {
+  id: string;
+  name: string;
+  color: string;
+  icon?: string | null;
+}
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title is too long"),
@@ -54,6 +68,12 @@ export default function NewMeetingPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // Projects and Tags state
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+
   const {
     register,
     handleSubmit,
@@ -66,6 +86,65 @@ export default function NewMeetingPage() {
       aiInstructions: "",
     },
   });
+
+  // Fetch projects and tags
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [projectsRes, tagsRes] = await Promise.all([
+          fetch("/api/projects"),
+          fetch("/api/tags"),
+        ]);
+        if (projectsRes.ok) {
+          const projectsData = await projectsRes.json();
+          setProjects(projectsData);
+        }
+        if (tagsRes.ok) {
+          const tagsData = await tagsRes.json();
+          setTags(tagsData);
+        }
+      } catch (error) {
+        console.error("Failed to fetch projects/tags:", error);
+      }
+    }
+    fetchData();
+  }, []);
+
+  const handleCreateProject = async (name: string): Promise<Project | null> => {
+    try {
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (response.ok) {
+        const newProject = await response.json();
+        setProjects((prev) => [...prev, newProject]);
+        return newProject;
+      }
+    } catch (error) {
+      console.error("Failed to create project:", error);
+    }
+    return null;
+  };
+
+  const handleCreateTag = async (name: string): Promise<Tag | null> => {
+    try {
+      const response = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (response.ok) {
+        const newTag = await response.json();
+        setTags((prev) => [...prev, newTag]);
+        return newTag;
+      }
+    } catch (error) {
+      console.error("Failed to create tag:", error);
+    }
+    return null;
+  };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -118,6 +197,12 @@ export default function NewMeetingPage() {
       }
       if (data.aiInstructions) {
         formData.append("aiInstructions", data.aiInstructions);
+      }
+      if (selectedProject) {
+        formData.append("projectId", selectedProject.id);
+      }
+      if (selectedTags.length > 0) {
+        formData.append("tagIds", JSON.stringify(selectedTags.map((t) => t.id)));
       }
 
       // Upload file
@@ -316,6 +401,42 @@ export default function NewMeetingPage() {
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 Language will be detected automatically during transcription.
               </p>
+            </CardContent>
+          </Card>
+
+          {/* Organization */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Organization</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Project (optional)</Label>
+                <ProjectSelector
+                  projects={projects}
+                  selectedProject={selectedProject}
+                  onProjectChange={setSelectedProject}
+                  onCreateProject={handleCreateProject}
+                  placeholder="Assign to a project..."
+                />
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Group related meetings together.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tags (optional)</Label>
+                <TagSelector
+                  availableTags={tags}
+                  selectedTags={selectedTags}
+                  onTagsChange={setSelectedTags}
+                  onCreateTag={handleCreateTag}
+                  placeholder="Add tags..."
+                />
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Add labels for easy filtering and search.
+                </p>
+              </div>
             </CardContent>
           </Card>
 

@@ -13,6 +13,8 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   meetings     Meeting[]
+  projects     Project[]
+  tags         Tag[]
 }
 
 model Meeting {
@@ -24,6 +26,11 @@ model Meeting {
   description      String?
   aiInstructions   String?          @db.Text // Custom instructions for AI analysis
   language         Language         @default(ENGLISH)
+
+  // Organization
+  projectId        String?
+  project          Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  tags             MeetingTag[]
 
   // File information
   originalFileName String
@@ -49,6 +56,7 @@ model Meeting {
   speakers         Speaker[]
 
   @@index([userId])
+  @@index([projectId])
   @@index([status])
   @@index([createdAt])
 }
@@ -137,6 +145,45 @@ enum Language {
   ENGLISH
   PORTUGUESE_BR
   SPANISH
+}
+
+model Project {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String    @default("#71717a")
+  icon      String?   // Optional emoji or icon name
+  meetings  Meeting[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Tag {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String       @default("#71717a")
+  meetings  MeetingTag[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model MeetingTag {
+  meetingId String
+  tagId     String
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([meetingId, tagId])
 }
 
 model Setting {

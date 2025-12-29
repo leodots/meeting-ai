@@ -30,6 +30,9 @@ export async function POST(request: NextRequest) {
     const title = formData.get("title") as string | null;
     const description = formData.get("description") as string | null;
     const aiInstructions = formData.get("aiInstructions") as string | null;
+    const projectId = formData.get("projectId") as string | null;
+    const tagIdsRaw = formData.get("tagIds") as string | null;
+    const tagIds = tagIdsRaw ? JSON.parse(tagIdsRaw) as string[] : [];
 
     // Validate file
     if (!file) {
@@ -80,6 +83,12 @@ export async function POST(request: NextRequest) {
         storagePath: filepath,
         fileSize: file.size,
         mimeType: file.type,
+        projectId: projectId || null,
+        tags: tagIds.length > 0 ? {
+          create: tagIds.map((tagId) => ({
+            tag: { connect: { id: tagId } },
+          })),
+        } : undefined,
       },
     });
 

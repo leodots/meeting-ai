@@ -14,10 +14,18 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const status = searchParams.get("status");
+    const projectId = searchParams.get("project");
+    const tagId = searchParams.get("tag");
 
     const where = {
       userId: session.user.id,
       ...(status && { status: status as any }),
+      ...(projectId && { projectId }),
+      ...(tagId && {
+        tags: {
+          some: { tagId },
+        },
+      }),
     };
 
     const [meetings, total] = await Promise.all([
@@ -36,6 +44,26 @@ export async function GET(request: NextRequest) {
           uploadedAt: true,
           processedAt: true,
           createdAt: true,
+          projectId: true,
+          project: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+              icon: true,
+            },
+          },
+          tags: {
+            select: {
+              tag: {
+                select: {
+                  id: true,
+                  name: true,
+                  color: true,
+                },
+              },
+            },
+          },
         },
       }),
       prisma.meeting.count({ where }),

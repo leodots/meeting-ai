@@ -171,19 +171,41 @@ export default function MeetingDetailPage({
     }
   }
 
-  function exportMarkdown() {
-    window.open(`/api/meetings/${id}/export?format=md`, "_blank");
+  async function exportMarkdown() {
+    try {
+      const response = await fetch(`/api/meetings/${id}/export?format=md`);
+      if (!response.ok) throw new Error("Export failed");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${meeting?.title || "meeting"}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError("Failed to export markdown");
+    }
   }
 
-  function exportPDF() {
-    // Open HTML version in new window for printing
-    const printWindow = window.open(`/api/meetings/${id}/export?format=html`, "_blank");
-    if (printWindow) {
-      printWindow.onload = () => {
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
-      };
+  async function exportPDF() {
+    try {
+      const response = await fetch(`/api/meetings/${id}/export?format=html`);
+      if (!response.ok) throw new Error("Export failed");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${meeting?.title || "meeting"}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError("Failed to export PDF");
     }
   }
 
