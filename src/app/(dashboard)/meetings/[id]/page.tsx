@@ -27,7 +27,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageContainer } from "@/components/layout";
 import { ProjectSelector, TagSelector } from "@/components/organization";
+import { AlertDialog } from "@/components/ui/alert-dialog";
+import { CopyButton } from "@/components/ui/copy-button";
+import { SkeletonMeetingDetail } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Project {
   id: string;
@@ -129,6 +133,7 @@ export default function MeetingDetailPage({
   );
   const [processing, setProcessing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Organization editing state
   const [isEditingOrganization, setIsEditingOrganization] = useState(false);
@@ -220,9 +225,13 @@ export default function MeetingDetailPage({
         const updated = await response.json();
         setMeeting((prev) => prev ? { ...prev, project: updated.project, tags: updated.tags } : null);
         setIsEditingOrganization(false);
+        toast.success("Organization updated");
+      } else {
+        toast.error("Failed to update organization");
       }
     } catch (err) {
       console.error("Failed to save organization:", err);
+      toast.error("Failed to update organization");
     } finally {
       setSavingOrganization(false);
     }
@@ -278,18 +287,18 @@ export default function MeetingDetailPage({
   }
 
   async function deleteMeeting() {
-    if (!confirm("Are you sure you want to delete this meeting?")) return;
-
     setDeleting(true);
     try {
       const response = await fetch(`/api/meetings/${id}`, { method: "DELETE" });
       if (!response.ok) {
         throw new Error("Failed to delete meeting");
       }
+      toast.success("Meeting deleted");
       router.push("/meetings");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete meeting");
+      toast.error(err instanceof Error ? err.message : "Failed to delete meeting");
       setDeleting(false);
+      setShowDeleteDialog(false);
     }
   }
 
@@ -307,12 +316,13 @@ export default function MeetingDetailPage({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      toast.success("Markdown exported");
     } catch (err) {
-      setError("Failed to export markdown");
+      toast.error("Failed to export markdown");
     }
   }
 
-  async function exportPDF() {
+  async function exportHTML() {
     try {
       const response = await fetch(`/api/meetings/${id}/export?format=html`);
       if (!response.ok) throw new Error("Export failed");
@@ -326,17 +336,16 @@ export default function MeetingDetailPage({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      toast.success("HTML exported");
     } catch (err) {
-      setError("Failed to export PDF");
+      toast.error("Failed to export HTML");
     }
   }
 
   if (loading) {
     return (
       <PageContainer>
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-        </div>
+        <SkeletonMeetingDetail />
       </PageContainer>
     );
   }
@@ -544,15 +553,15 @@ export default function MeetingDetailPage({
                   <Download className="mr-2 h-4 w-4" />
                   Markdown
                 </Button>
-                <Button variant="outline" onClick={exportPDF}>
+                <Button variant="outline" onClick={exportHTML}>
                   <Printer className="mr-2 h-4 w-4" />
-                  PDF
+                  HTML
                 </Button>
               </>
             )}
             <Button
               variant="outline"
-              onClick={deleteMeeting}
+              onClick={() => setShowDeleteDialog(true)}
               disabled={deleting}
               className="text-red-500 hover:text-red-600"
             >
@@ -565,6 +574,19 @@ export default function MeetingDetailPage({
             </Button>
           </div>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          title="Delete Meeting"
+          description={`Are you sure you want to delete "${meeting.title}"? This action cannot be undone and will permanently remove the meeting, transcript, and analysis.`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          variant="danger"
+          onConfirm={deleteMeeting}
+          isLoading={deleting}
+        />
 
         {/* Processing Status */}
         {isProcessing && (
@@ -651,10 +673,17 @@ export default function MeetingDetailPage({
             >
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <FileText className="h-5 w-5 text-zinc-400" />
-                    Summary
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <FileText className="h-5 w-5 text-zinc-400" />
+                      Summary
+                    </CardTitle>
+                    <CopyButton
+                      text={meeting.analysis.summary}
+                      label="Copy"
+                      successMessage="Summary copied"
+                    />
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <p className="whitespace-pre-wrap text-zinc-600 dark:text-zinc-300">
@@ -754,8 +783,15 @@ export default function MeetingDetailPage({
           >
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Full Transcript</CardTitle>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <CardTitle className="text-lg">Full Transcript</CardTitle>
+                    <CopyButton
+                      text={meeting.transcript.fullText}
+                      label="Copy"
+                      successMessage="Transcript copied"
+                    />
+                  </div>
                   {/* Speaker Legend */}
                   <div className="flex flex-wrap gap-3">
                     {meeting.speakers.map((speaker) => (

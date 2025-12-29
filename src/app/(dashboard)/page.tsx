@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Calendar,
   Clock,
-  Loader2,
   Mic,
   Plus,
   TrendingUp,
@@ -15,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageContainer } from "@/components/layout";
+import { SkeletonCard } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 interface Stats {
@@ -161,8 +161,10 @@ export default function DashboardPage() {
 
         {/* Recent Meetings or Empty State */}
         {loading ? (
-          <div className="flex h-32 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
         ) : recentMeetings.length > 0 ? (
           <motion.div

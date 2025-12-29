@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PWARegister } from "@/components/pwa-register";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -66,6 +67,19 @@ export default function RootLayout({
         >
           <PWARegister />
           {children}
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              classNames: {
+                toast: "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800",
+                title: "text-zinc-900 dark:text-zinc-100",
+                description: "text-zinc-500 dark:text-zinc-400",
+                success: "border-green-500/30 dark:border-green-500/30",
+                error: "border-red-500/30 dark:border-red-500/30",
+              },
+            }}
+            richColors
+          />
         </ThemeProvider>
       </body>
     </html>

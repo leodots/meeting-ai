@@ -8,7 +8,6 @@ import {
   Calendar,
   Clock,
   Folder,
-  Loader2,
   Mic,
   Plus,
   Search,
@@ -18,7 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageContainer } from "@/components/layout";
-import { TagBadge, ProjectBadge } from "@/components/organization";
+import { TagBadge } from "@/components/organization";
+import { SkeletonMeetingList } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 interface Project {
@@ -312,11 +312,7 @@ export default function MeetingsPage() {
         </div>
 
         {/* Loading State */}
-        {loading && (
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-          </div>
-        )}
+        {loading && <SkeletonMeetingList count={5} />}
 
         {/* Error State */}
         {error && !loading && (
