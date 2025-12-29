@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { handlers } from "../../../../../auth";
 import {
   loginRateLimiter,
@@ -9,7 +10,7 @@ import {
 export const { GET } = handlers;
 
 // Wrap POST to add rate limiting for login attempts
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const url = new URL(request.url);
   const isCredentialsCallback =
     url.pathname.includes("/callback/credentials");
