@@ -1,17 +1,29 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
+  ChevronDown,
+  Folder,
   Home,
   Mic,
   Plus,
   Settings,
+  Tags,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+interface Project {
+  id: string;
+  name: string;
+  color: string;
+  icon?: string | null;
+  _count?: { meetings: number };
+}
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -20,20 +32,43 @@ interface SidebarProps {
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
-  { name: "Meetings", href: "/meetings", icon: Mic },
+  { name: "All Meetings", href: "/meetings", icon: Mic },
   { name: "New Meeting", href: "/meetings/new", icon: Plus },
-  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectsExpanded, setProjectsExpanded] = useState(true);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+
+  const activeProjectId = searchParams.get("project");
+
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const response = await fetch("/api/projects");
+        if (response.ok) {
+          const data = await response.json();
+          setProjects(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch projects:", error);
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    }
+    fetchProjects();
+  }, []);
 
   const sidebarContent = (
     <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-1 px-3 py-4">
+      <div className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {navigation.map((item, index) => {
           const isActive = pathname === item.href ||
-            (item.href !== "/" && pathname.startsWith(item.href));
+            (item.href !== "/" && item.href !== "/meetings" && pathname.startsWith(item.href)) ||
+            (item.href === "/meetings" && pathname === "/meetings" && !activeProjectId);
 
           return (
             <motion.div
@@ -65,6 +100,135 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             </motion.div>
           );
         })}
+
+        {/* Projects Section */}
+        <div className="pt-4">
+          <button
+            onClick={() => setProjectsExpanded(!projectsExpanded)}
+            className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+          >
+            <span>Projects</span>
+            <motion.div
+              animate={{ rotate: projectsExpanded ? 0 : -90 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown className="h-4 w-4" />
+            </motion.div>
+          </button>
+
+          <AnimatePresence>
+            {projectsExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-0.5 pt-1">
+                  {isLoadingProjects ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400" />
+                    </div>
+                  ) : projects.length === 0 ? (
+                    <p className="px-3 py-2 text-xs text-zinc-400 dark:text-zinc-500">
+                      No projects yet
+                    </p>
+                  ) : (
+                    projects.map((project, index) => {
+                      const isActive = pathname === "/meetings" && activeProjectId === project.id;
+
+                      return (
+                        <motion.div
+                          key={project.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.03 }}
+                        >
+                          <Link
+                            href={`/meetings?project=${project.id}`}
+                            onClick={onClose}
+                          >
+                            <span
+                              className={cn(
+                                "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-200",
+                                isActive
+                                  ? "bg-zinc-100 font-medium text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
+                                  : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50 dark:hover:text-zinc-200"
+                              )}
+                            >
+                              {project.icon ? (
+                                <span className="text-sm">{project.icon}</span>
+                              ) : (
+                                <Folder
+                                  className="h-4 w-4 transition-transform duration-200 group-hover:scale-110"
+                                  style={{ color: project.color }}
+                                />
+                              )}
+                              <span className="flex-1 truncate">{project.name}</span>
+                              {project._count?.meetings !== undefined && project._count.meetings > 0 && (
+                                <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                                  {project._count.meetings}
+                                </span>
+                              )}
+                            </span>
+                          </Link>
+                        </motion.div>
+                      );
+                    })
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Manage Section */}
+        <div className="pt-4">
+          <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            Manage
+          </p>
+          <Link href="/organize" onClick={onClose}>
+            <span
+              className={cn(
+                "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                pathname === "/organize"
+                  ? "bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+              )}
+            >
+              <Tags
+                className={cn(
+                  "h-5 w-5 transition-transform duration-200 group-hover:scale-110",
+                  pathname === "/organize"
+                    ? "text-zinc-50 dark:text-zinc-900"
+                    : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300"
+                )}
+              />
+              Projects & Tags
+            </span>
+          </Link>
+          <Link href="/settings" onClick={onClose}>
+            <span
+              className={cn(
+                "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                pathname === "/settings"
+                  ? "bg-zinc-900 text-zinc-50 dark:bg-zinc-100 dark:text-zinc-900"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+              )}
+            >
+              <Settings
+                className={cn(
+                  "h-5 w-5 transition-transform duration-200 group-hover:scale-110",
+                  pathname === "/settings"
+                    ? "text-zinc-50 dark:text-zinc-900"
+                    : "text-zinc-400 group-hover:text-zinc-600 dark:text-zinc-500 dark:group-hover:text-zinc-300"
+                )}
+              />
+              Settings
+            </span>
+          </Link>
+        </div>
       </div>
 
       <div className="border-t border-zinc-200 p-4 dark:border-zinc-800">

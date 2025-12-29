@@ -1,0 +1,695 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  Edit2,
+  Folder,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+  Tag as TagIcon,
+  Trash2,
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { PageContainer } from "@/components/layout";
+import { cn } from "@/lib/utils";
+
+interface Project {
+  id: string;
+  name: string;
+  color: string;
+  icon?: string | null;
+  _count?: { meetings: number };
+}
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  _count?: { meetings: number };
+}
+
+const COLORS = [
+  "#ef4444", // red
+  "#f97316", // orange
+  "#eab308", // yellow
+  "#22c55e", // green
+  "#14b8a6", // teal
+  "#3b82f6", // blue
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+  "#71717a", // gray
+];
+
+function ColorPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (color: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {COLORS.map((color) => (
+        <button
+          key={color}
+          type="button"
+          onClick={() => onChange(color)}
+          className={cn(
+            "h-6 w-6 rounded-full transition-all hover:scale-110",
+            value === color && "ring-2 ring-offset-2 ring-zinc-900 dark:ring-zinc-100 dark:ring-offset-zinc-950"
+          )}
+          style={{ backgroundColor: color }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ProjectCard({
+  project,
+  onEdit,
+  onDelete,
+}: {
+  project: Project;
+  onEdit: (project: Project) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    await onDelete(project.id);
+    setIsDeleting(false);
+  };
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      className="relative flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
+    >
+      <div
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+        style={{ backgroundColor: `${project.color}20` }}
+      >
+        {project.icon ? (
+          <span className="text-lg">{project.icon}</span>
+        ) : (
+          <Folder className="h-5 w-5" style={{ color: project.color }} />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">
+          {project.name}
+        </p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          {project._count?.meetings || 0} meetings
+        </p>
+      </div>
+      <div className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => setShowMenu(!showMenu)}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+        <AnimatePresence>
+          {showMenu && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-10"
+                onClick={() => setShowMenu(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="absolute right-0 top-full z-20 mt-1 w-32 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+              >
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    onEdit(project);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                >
+                  <Edit2 className="h-4 w-4" />
+                  Edit
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    handleDelete();
+                  }}
+                  disabled={isDeleting}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Delete
+                </button>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+}
+
+function TagCard({
+  tag,
+  onEdit,
+  onDelete,
+}: {
+  tag: Tag;
+  onEdit: (tag: Tag) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    await onDelete(tag.id);
+    setIsDeleting(false);
+  };
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      className="relative flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
+    >
+      <span
+        className="h-4 w-4 shrink-0 rounded-full"
+        style={{ backgroundColor: tag.color }}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">
+          {tag.name}
+        </p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          {tag._count?.meetings || 0} meetings
+        </p>
+      </div>
+      <div className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => setShowMenu(!showMenu)}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+        <AnimatePresence>
+          {showMenu && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-10"
+                onClick={() => setShowMenu(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="absolute right-0 top-full z-20 mt-1 w-32 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+              >
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    onEdit(tag);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                >
+                  <Edit2 className="h-4 w-4" />
+                  Edit
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    handleDelete();
+                  }}
+                  disabled={isDeleting}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Delete
+                </button>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+}
+
+export default function OrganizePage() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [isLoadingTags, setIsLoadingTags] = useState(true);
+
+  // Form states
+  const [showProjectForm, setShowProjectForm] = useState(false);
+  const [showTagForm, setShowTagForm] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [editingTag, setEditingTag] = useState<Tag | null>(null);
+
+  const [projectName, setProjectName] = useState("");
+  const [projectColor, setProjectColor] = useState(COLORS[5]);
+  const [projectIcon, setProjectIcon] = useState("");
+  const [tagName, setTagName] = useState("");
+  const [tagColor, setTagColor] = useState(COLORS[5]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    fetchProjects();
+    fetchTags();
+  }, []);
+
+  async function fetchProjects() {
+    try {
+      const response = await fetch("/api/projects");
+      if (response.ok) {
+        const data = await response.json();
+        setProjects(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch projects:", error);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  }
+
+  async function fetchTags() {
+    try {
+      const response = await fetch("/api/tags");
+      if (response.ok) {
+        const data = await response.json();
+        setTags(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch tags:", error);
+    } finally {
+      setIsLoadingTags(false);
+    }
+  }
+
+  const resetProjectForm = () => {
+    setProjectName("");
+    setProjectColor(COLORS[5]);
+    setProjectIcon("");
+    setEditingProject(null);
+    setShowProjectForm(false);
+  };
+
+  const resetTagForm = () => {
+    setTagName("");
+    setTagColor(COLORS[5]);
+    setEditingTag(null);
+    setShowTagForm(false);
+  };
+
+  const handleEditProject = (project: Project) => {
+    setEditingProject(project);
+    setProjectName(project.name);
+    setProjectColor(project.color);
+    setProjectIcon(project.icon || "");
+    setShowProjectForm(true);
+  };
+
+  const handleEditTag = (tag: Tag) => {
+    setEditingTag(tag);
+    setTagName(tag.name);
+    setTagColor(tag.color);
+    setShowTagForm(true);
+  };
+
+  const handleSaveProject = async () => {
+    if (!projectName.trim()) return;
+    setIsSaving(true);
+
+    try {
+      const url = editingProject
+        ? `/api/projects/${editingProject.id}`
+        : "/api/projects";
+      const method = editingProject ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: projectName.trim(),
+          color: projectColor,
+          icon: projectIcon || null,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchProjects();
+        resetProjectForm();
+      }
+    } catch (error) {
+      console.error("Failed to save project:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveTag = async () => {
+    if (!tagName.trim()) return;
+    setIsSaving(true);
+
+    try {
+      const url = editingTag ? `/api/tags/${editingTag.id}` : "/api/tags";
+      const method = editingTag ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: tagName.trim(),
+          color: tagColor,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchTags();
+        resetTagForm();
+      }
+    } catch (error) {
+      console.error("Failed to save tag:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    try {
+      const response = await fetch(`/api/projects/${id}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        setProjects((prev) => prev.filter((p) => p.id !== id));
+      }
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+    }
+  };
+
+  const handleDeleteTag = async (id: string) => {
+    try {
+      const response = await fetch(`/api/tags/${id}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        setTags((prev) => prev.filter((t) => t.id !== id));
+      }
+    } catch (error) {
+      console.error("Failed to delete tag:", error);
+    }
+  };
+
+  return (
+    <PageContainer>
+      <div className="mx-auto max-w-4xl space-y-8">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl">
+            Projects & Tags
+          </h1>
+          <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+            Organize your meetings with projects and tags.
+          </p>
+        </div>
+
+        {/* Projects Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Folder className="h-5 w-5 text-zinc-400" />
+                  <CardTitle className="text-lg">Projects</CardTitle>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    resetProjectForm();
+                    setShowProjectForm(true);
+                  }}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  New Project
+                </Button>
+              </div>
+              <CardDescription>
+                Group related meetings together in projects.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AnimatePresence mode="popLayout">
+                {showProjectForm && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-4 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {editingProject ? "Edit Project" : "New Project"}
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={resetProjectForm}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Name</Label>
+                        <Input
+                          value={projectName}
+                          onChange={(e) => setProjectName(e.target.value)}
+                          placeholder="Project name..."
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Icon (optional emoji)</Label>
+                        <Input
+                          value={projectIcon}
+                          onChange={(e) => setProjectIcon(e.target.value)}
+                          placeholder="📁"
+                          className="w-20"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Color</Label>
+                        <ColorPicker
+                          value={projectColor}
+                          onChange={setProjectColor}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={resetProjectForm}>
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleSaveProject}
+                          disabled={!projectName.trim() || isSaving}
+                        >
+                          {isSaving ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : null}
+                          {editingProject ? "Save Changes" : "Create Project"}
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {isLoadingProjects ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+                </div>
+              ) : projects.length === 0 ? (
+                <div className="py-8 text-center">
+                  <Folder className="mx-auto h-10 w-10 text-zinc-300 dark:text-zinc-700" />
+                  <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                    No projects yet. Create one to get started.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <AnimatePresence mode="popLayout">
+                    {projects.map((project) => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        onEdit={handleEditProject}
+                        onDelete={handleDeleteProject}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Tags Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <TagIcon className="h-5 w-5 text-zinc-400" />
+                  <CardTitle className="text-lg">Tags</CardTitle>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    resetTagForm();
+                    setShowTagForm(true);
+                  }}
+                >
+                  <Plus className="mr-1 h-4 w-4" />
+                  New Tag
+                </Button>
+              </div>
+              <CardDescription>
+                Add labels to meetings for easy filtering and search.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AnimatePresence mode="popLayout">
+                {showTagForm && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-4 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {editingTag ? "Edit Tag" : "New Tag"}
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={resetTagForm}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Name</Label>
+                        <Input
+                          value={tagName}
+                          onChange={(e) => setTagName(e.target.value)}
+                          placeholder="Tag name..."
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Color</Label>
+                        <ColorPicker value={tagColor} onChange={setTagColor} />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={resetTagForm}>
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleSaveTag}
+                          disabled={!tagName.trim() || isSaving}
+                        >
+                          {isSaving ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : null}
+                          {editingTag ? "Save Changes" : "Create Tag"}
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {isLoadingTags ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+                </div>
+              ) : tags.length === 0 ? (
+                <div className="py-8 text-center">
+                  <TagIcon className="mx-auto h-10 w-10 text-zinc-300 dark:text-zinc-700" />
+                  <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                    No tags yet. Create one to get started.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  <AnimatePresence mode="popLayout">
+                    {tags.map((tag) => (
+                      <TagCard
+                        key={tag.id}
+                        tag={tag}
+                        onEdit={handleEditTag}
+                        onDelete={handleDeleteTag}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    </PageContainer>
+  );
+}

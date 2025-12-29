@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { SessionProvider } from "next-auth/react";
 import { Header } from "./header";
 import { Sidebar } from "./sidebar";
@@ -10,6 +10,20 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
+function SidebarFallback() {
+  return (
+    <aside className="hidden h-screen w-64 flex-shrink-0 border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 lg:block">
+      <div className="flex h-full flex-col">
+        <div className="flex-1 space-y-1 px-3 py-4">
+          <div className="h-10 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
+          <div className="h-10 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
+          <div className="h-10 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -17,7 +31,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     <SessionProvider>
       <AuthGuard>
         <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950">
-          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <Suspense fallback={<SidebarFallback />}>
+            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          </Suspense>
           <div className="flex flex-1 flex-col overflow-hidden">
             <Header onMenuClick={() => setSidebarOpen(true)} />
             <div className="flex-1 overflow-auto">{children}</div>
