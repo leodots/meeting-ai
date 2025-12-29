@@ -97,9 +97,11 @@ export function TagSelector({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && canCreateNew) {
+    if (e.key === "Enter") {
       e.preventDefault();
-      handleCreate();
+      if (canCreateNew) {
+        handleCreate();
+      }
     } else if (e.key === "Backspace" && !search && selectedTags.length > 0) {
       handleRemove(selectedTags[selectedTags.length - 1].id);
     } else if (e.key === "Escape") {

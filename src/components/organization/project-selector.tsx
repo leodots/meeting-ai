@@ -152,9 +152,11 @@ export function ProjectSelector({
                 placeholder="Search or create..."
                 className="w-full bg-transparent px-2 py-1 text-sm outline-none placeholder:text-zinc-400"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && canCreateNew) {
+                  if (e.key === "Enter") {
                     e.preventDefault();
-                    handleCreate();
+                    if (canCreateNew) {
+                      handleCreate();
+                    }
                   }
                 }}
               />
