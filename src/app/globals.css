@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 /* Monochromatic Zinc Design System */
 :root {
   /* Background */
@@ -41,33 +43,44 @@
   --radius: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Background */
-    --background: #09090b;
-    --background-subtle: #18181b;
-    --background-muted: #27272a;
+.dark {
+  /* Background */
+  --background: #09090b;
+  --background-subtle: #18181b;
+  --background-muted: #27272a;
 
-    /* Foreground */
-    --foreground: #fafafa;
-    --foreground-muted: #a1a1aa;
-    --foreground-subtle: #71717a;
+  /* Foreground */
+  --foreground: #fafafa;
+  --foreground-muted: #a1a1aa;
+  --foreground-subtle: #71717a;
 
-    /* Border */
-    --border: #27272a;
-    --border-subtle: #18181b;
+  /* Border */
+  --border: #27272a;
+  --border-subtle: #18181b;
 
-    /* Accent */
-    --accent: #fafafa;
-    --accent-foreground: #09090b;
+  /* Accent */
+  --accent: #fafafa;
+  --accent-foreground: #09090b;
 
-    /* Speaker Colors (Monochromatic Spectrum - Inverted) */
-    --speaker-1: #a1a1aa;
-    --speaker-2: #d4d4d8;
-    --speaker-3: #e4e4e7;
-    --speaker-4: #f4f4f5;
-    --speaker-5: #fafafa;
-  }
+  /* Speaker Colors (Monochromatic Spectrum - Inverted) */
+  --speaker-1: #a1a1aa;
+  --speaker-2: #d4d4d8;
+  --speaker-3: #e4e4e7;
+  --speaker-4: #f4f4f5;
+  --speaker-5: #fafafa;
+}
+
+/* View Transition for theme switching */
+::view-transition-old(root) {
+  animation: none;
+  mix-blend-mode: normal;
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+  z-index: 9999;
 }
 
 @theme inline {
