@@ -144,42 +144,46 @@ function ApiKeyCard({
 
       {isConfigured && !isEditing && (
         <div className="mt-3 flex items-center gap-2">
-          <div className="flex-1 rounded border border-zinc-200 bg-white px-3 py-2 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-800">
-            {showValue ? apiKeyInfo?.maskedValue : "••••••••••••••••"}
+          <div className="min-w-0 flex-1 overflow-hidden text-ellipsis rounded border border-zinc-200 bg-white px-3 py-2 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-800">
+            <span className="block truncate">
+              {showValue ? apiKeyInfo?.maskedValue : "••••••••••••••••"}
+            </span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowValue(!showValue)}
-            className="h-9 w-9"
-          >
-            {showValue ? (
-              <EyeOff className="h-4 w-4" />
-            ) : (
-              <Eye className="h-4 w-4" />
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsEditing(true)}
-            className="h-9 w-9"
-          >
-            <Key className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="h-9 w-9 text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
-          >
-            {isDeleting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4" />
-            )}
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowValue(!showValue)}
+              className="h-9 w-9"
+            >
+              {showValue ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsEditing(true)}
+              className="h-9 w-9"
+            >
+              <Key className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="h-9 w-9 text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
       )}
 
