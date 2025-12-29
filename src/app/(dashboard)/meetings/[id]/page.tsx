@@ -345,13 +345,23 @@ export default function MeetingDetailPage({
         }),
       });
       if (response.ok) {
+        const newLabel = editingSpeakerLabel.trim() || null;
         setMeeting((prev) => {
           if (!prev) return null;
           return {
             ...prev,
             speakers: prev.speakers.map((s) =>
-              s.id === editingSpeakerId ? { ...s, label: editingSpeakerLabel.trim() || null } : s
+              s.id === editingSpeakerId ? { ...s, label: newLabel } : s
             ),
+            // Also update speaker labels in transcript utterances
+            transcript: prev.transcript ? {
+              ...prev.transcript,
+              utterances: prev.transcript.utterances.map((u) =>
+                u.speaker.id === editingSpeakerId
+                  ? { ...u, speaker: { ...u.speaker, label: newLabel } }
+                  : u
+              ),
+            } : null,
           };
         });
         toast.success("Speaker renamed");
