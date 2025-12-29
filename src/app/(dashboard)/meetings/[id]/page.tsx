@@ -3,13 +3,16 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowLeft,
   Calendar,
+  Check,
   Clock,
   Download,
+  Edit2,
   FileText,
+  Folder,
   Lightbulb,
   ListChecks,
   Loader2,
@@ -18,11 +21,26 @@ import {
   Printer,
   Trash2,
   Users,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageContainer } from "@/components/layout";
+import { ProjectSelector, TagSelector } from "@/components/organization";
 import { cn } from "@/lib/utils";
+
+interface Project {
+  id: string;
+  name: string;
+  color: string;
+  icon?: string | null;
+}
+
+interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
 
 interface Speaker {
   id: string;
@@ -80,6 +98,8 @@ interface Meeting {
   transcript: Transcript | null;
   analysis: Analysis | null;
   speakers: Speaker[];
+  project: Project | null;
+  tags: { tag: Tag }[];
 }
 
 function formatDuration(seconds: number): string {
@@ -110,9 +130,111 @@ export default function MeetingDetailPage({
   const [processing, setProcessing] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Organization editing state
+  const [isEditingOrganization, setIsEditingOrganization] = useState(false);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
+  const [savingOrganization, setSavingOrganization] = useState(false);
+
   useEffect(() => {
     fetchMeeting();
+    fetchProjectsAndTags();
   }, [id]);
+
+  // Sync selected project/tags when meeting loads
+  useEffect(() => {
+    if (meeting) {
+      setSelectedProject(meeting.project);
+      setSelectedTags(meeting.tags.map((t) => t.tag));
+    }
+  }, [meeting]);
+
+  async function fetchProjectsAndTags() {
+    try {
+      const [projectsRes, tagsRes] = await Promise.all([
+        fetch("/api/projects"),
+        fetch("/api/tags"),
+      ]);
+      if (projectsRes.ok) {
+        setAllProjects(await projectsRes.json());
+      }
+      if (tagsRes.ok) {
+        setAllTags(await tagsRes.json());
+      }
+    } catch (err) {
+      console.error("Failed to fetch projects/tags:", err);
+    }
+  }
+
+  async function handleCreateProject(name: string): Promise<Project | null> {
+    try {
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (response.ok) {
+        const newProject = await response.json();
+        setAllProjects((prev) => [...prev, newProject]);
+        return newProject;
+      }
+    } catch (err) {
+      console.error("Failed to create project:", err);
+    }
+    return null;
+  }
+
+  async function handleCreateTag(name: string): Promise<Tag | null> {
+    try {
+      const response = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (response.ok) {
+        const newTag = await response.json();
+        setAllTags((prev) => [...prev, newTag]);
+        return newTag;
+      }
+    } catch (err) {
+      console.error("Failed to create tag:", err);
+    }
+    return null;
+  }
+
+  async function saveOrganization() {
+    if (!meeting) return;
+    setSavingOrganization(true);
+    try {
+      const response = await fetch(`/api/meetings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: selectedProject?.id || null,
+          tagIds: selectedTags.map((t) => t.id),
+        }),
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        setMeeting((prev) => prev ? { ...prev, project: updated.project, tags: updated.tags } : null);
+        setIsEditingOrganization(false);
+      }
+    } catch (err) {
+      console.error("Failed to save organization:", err);
+    } finally {
+      setSavingOrganization(false);
+    }
+  }
+
+  function cancelEditOrganization() {
+    if (meeting) {
+      setSelectedProject(meeting.project);
+      setSelectedTags(meeting.tags.map((t) => t.tag));
+    }
+    setIsEditingOrganization(false);
+  }
 
   // Poll for updates while processing
   useEffect(() => {
@@ -275,6 +397,134 @@ export default function MeetingDetailPage({
                   </span>
                 )}
               </div>
+
+              {/* Organization - Project & Tags */}
+              <AnimatePresence mode="wait">
+                {isEditingOrganization ? (
+                  <motion.div
+                    key="editing"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-4 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                        Edit Organization
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={cancelEditOrganization}
+                          disabled={savingOrganization}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={saveOrganization}
+                          disabled={savingOrganization}
+                        >
+                          {savingOrganization ? (
+                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="mr-1 h-4 w-4" />
+                          )}
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                          Project
+                        </label>
+                        <ProjectSelector
+                          projects={allProjects}
+                          selectedProject={selectedProject}
+                          onProjectChange={setSelectedProject}
+                          onCreateProject={handleCreateProject}
+                          placeholder="Select project..."
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                          Tags
+                        </label>
+                        <TagSelector
+                          availableTags={allTags}
+                          selectedTags={selectedTags}
+                          onTagsChange={setSelectedTags}
+                          onCreateTag={handleCreateTag}
+                          placeholder="Add tags..."
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="display"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="mt-3 flex flex-wrap items-center gap-2"
+                  >
+                    {/* Project badge */}
+                    {meeting.project ? (
+                      <Link href={`/meetings?project=${meeting.project.id}`}>
+                        <motion.span
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                        >
+                          {meeting.project.icon ? (
+                            <span>{meeting.project.icon}</span>
+                          ) : (
+                            <Folder className="h-3.5 w-3.5" style={{ color: meeting.project.color }} />
+                          )}
+                          {meeting.project.name}
+                        </motion.span>
+                      </Link>
+                    ) : null}
+
+                    {/* Tag badges */}
+                    {meeting.tags.map(({ tag }) => (
+                      <Link key={tag.id} href={`/meetings?tag=${tag.id}`}>
+                        <motion.span
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-medium transition-colors"
+                          style={{
+                            backgroundColor: `${tag.color}15`,
+                            color: tag.color,
+                            border: `1px solid ${tag.color}30`,
+                          }}
+                        >
+                          <span
+                            className="h-2 w-2 rounded-full"
+                            style={{ backgroundColor: tag.color }}
+                          />
+                          {tag.name}
+                        </motion.span>
+                      </Link>
+                    ))}
+
+                    {/* Edit button */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditingOrganization(true)}
+                      className="h-7 px-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                      <span className="ml-1 text-xs">
+                        {meeting.project || meeting.tags.length > 0 ? "Edit" : "Add project/tags"}
+                      </span>
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">

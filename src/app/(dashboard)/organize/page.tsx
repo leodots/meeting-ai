@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
+  ArrowRight,
   Edit2,
   Folder,
   Loader2,
+  Mic,
   MoreHorizontal,
   Plus,
   Tag as TagIcon,
@@ -81,13 +84,16 @@ function ProjectCard({
   project,
   onEdit,
   onDelete,
+  onClick,
 }: {
   project: Project;
   onEdit: (project: Project) => void;
   onDelete: (id: string) => void;
+  onClick: (project: Project) => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -95,37 +101,66 @@ function ProjectCard({
     setIsDeleting(false);
   };
 
+  const meetingCount = project._count?.meetings || 0;
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="relative flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      onClick={() => onClick(project)}
+      className="group relative flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
     >
+      {/* Color accent bar */}
+      <motion.div
+        className="absolute left-0 top-0 h-full w-1 rounded-l-xl"
+        style={{ backgroundColor: project.color }}
+        initial={{ scaleY: 0 }}
+        animate={{ scaleY: isHovered ? 1 : 0.3 }}
+        transition={{ duration: 0.2 }}
+      />
+
       <div
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-        style={{ backgroundColor: `${project.color}20` }}
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-110"
+        style={{ backgroundColor: `${project.color}15` }}
       >
         {project.icon ? (
-          <span className="text-lg">{project.icon}</span>
+          <span className="text-xl">{project.icon}</span>
         ) : (
-          <Folder className="h-5 w-5" style={{ color: project.color }} />
+          <Folder className="h-6 w-6" style={{ color: project.color }} />
         )}
       </div>
+
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">
+        <p className="truncate font-semibold text-zinc-900 dark:text-zinc-100">
           {project.name}
         </p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          {project._count?.meetings || 0} meetings
-        </p>
+        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+          <Mic className="h-3 w-3" />
+          <span>{meetingCount} {meetingCount === 1 ? 'meeting' : 'meetings'}</span>
+        </div>
       </div>
-      <div className="relative">
+
+      {/* Arrow indicator */}
+      <motion.div
+        initial={{ opacity: 0, x: -5 }}
+        animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : -5 }}
+        className="mr-8 text-zinc-400"
+      >
+        <ArrowRight className="h-4 w-4" />
+      </motion.div>
+
+      {/* Menu button */}
+      <div className="relative" onClick={(e) => e.stopPropagation()}>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
           onClick={() => setShowMenu(!showMenu)}
         >
           <MoreHorizontal className="h-4 w-4" />
@@ -141,17 +176,17 @@ function ProjectCard({
                 onClick={() => setShowMenu(false)}
               />
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="absolute right-0 top-full z-20 mt-1 w-32 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
               >
                 <button
                   onClick={() => {
                     setShowMenu(false);
                     onEdit(project);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
                 >
                   <Edit2 className="h-4 w-4" />
                   Edit
@@ -162,7 +197,7 @@ function ProjectCard({
                     handleDelete();
                   }}
                   disabled={isDeleting}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
                 >
                   {isDeleting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -184,13 +219,16 @@ function TagCard({
   tag,
   onEdit,
   onDelete,
+  onClick,
 }: {
   tag: Tag;
   onEdit: (tag: Tag) => void;
   onDelete: (id: string) => void;
+  onClick: (tag: Tag) => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -198,31 +236,66 @@ function TagCard({
     setIsDeleting(false);
   };
 
+  const meetingCount = tag._count?.meetings || 0;
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="relative flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      onClick={() => onClick(tag)}
+      className="group relative flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <span
-        className="h-4 w-4 shrink-0 rounded-full"
-        style={{ backgroundColor: tag.color }}
-      />
+      {/* Colored dot with pulse effect on hover */}
+      <motion.div
+        className="relative shrink-0"
+        animate={{ scale: isHovered ? 1.2 : 1 }}
+        transition={{ duration: 0.2 }}
+      >
+        <span
+          className="block h-4 w-4 rounded-full"
+          style={{ backgroundColor: tag.color }}
+        />
+        {isHovered && (
+          <motion.span
+            className="absolute inset-0 rounded-full"
+            style={{ backgroundColor: tag.color }}
+            initial={{ scale: 1, opacity: 0.5 }}
+            animate={{ scale: 2, opacity: 0 }}
+            transition={{ duration: 0.6, repeat: Infinity }}
+          />
+        )}
+      </motion.div>
+
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">
           {tag.name}
         </p>
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          {tag._count?.meetings || 0} meetings
+          {meetingCount} {meetingCount === 1 ? 'meeting' : 'meetings'}
         </p>
       </div>
-      <div className="relative">
+
+      {/* Arrow indicator */}
+      <motion.div
+        initial={{ opacity: 0, x: -5 }}
+        animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : -5 }}
+        className="mr-6 text-zinc-400"
+      >
+        <ArrowRight className="h-4 w-4" />
+      </motion.div>
+
+      {/* Menu button */}
+      <div className="relative" onClick={(e) => e.stopPropagation()}>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
           onClick={() => setShowMenu(!showMenu)}
         >
           <MoreHorizontal className="h-4 w-4" />
@@ -238,17 +311,17 @@ function TagCard({
                 onClick={() => setShowMenu(false)}
               />
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="absolute right-0 top-full z-20 mt-1 w-32 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
               >
                 <button
                   onClick={() => {
                     setShowMenu(false);
                     onEdit(tag);
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
                 >
                   <Edit2 className="h-4 w-4" />
                   Edit
@@ -259,7 +332,7 @@ function TagCard({
                     handleDelete();
                   }}
                   disabled={isDeleting}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
                 >
                   {isDeleting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -278,6 +351,7 @@ function TagCard({
 }
 
 export default function OrganizePage() {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
@@ -300,6 +374,14 @@ export default function OrganizePage() {
     fetchProjects();
     fetchTags();
   }, []);
+
+  const handleProjectClick = (project: Project) => {
+    router.push(`/meetings?project=${project.id}`);
+  };
+
+  const handleTagClick = (tag: Tag) => {
+    router.push(`/meetings?tag=${tag.id}`);
+  };
 
   async function fetchProjects() {
     try {
@@ -562,7 +644,7 @@ export default function OrganizePage() {
                   </p>
                 </div>
               ) : (
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <AnimatePresence mode="popLayout">
                     {projects.map((project) => (
                       <ProjectCard
@@ -570,6 +652,7 @@ export default function OrganizePage() {
                         project={project}
                         onEdit={handleEditProject}
                         onDelete={handleDeleteProject}
+                        onClick={handleProjectClick}
                       />
                     ))}
                   </AnimatePresence>
@@ -673,7 +756,7 @@ export default function OrganizePage() {
                   </p>
                 </div>
               ) : (
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <AnimatePresence mode="popLayout">
                     {tags.map((tag) => (
                       <TagCard
@@ -681,6 +764,7 @@ export default function OrganizePage() {
                         tag={tag}
                         onEdit={handleEditTag}
                         onDelete={handleDeleteTag}
+                        onClick={handleTagClick}
                       />
                     ))}
                   </AnimatePresence>

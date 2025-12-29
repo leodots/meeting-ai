@@ -33,6 +33,25 @@ export async function GET(
         speakers: {
           orderBy: { speakerIndex: "asc" },
         },
+        project: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            icon: true,
+          },
+        },
+        tags: {
+          select: {
+            tag: {
+              select: {
+                id: true,
+                name: true,
+                color: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -82,14 +101,103 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    // Build update data
+    const updateData: Record<string, unknown> = {};
+
+    if (body.title !== undefined) {
+      updateData.title = body.title;
+    }
+    if (body.description !== undefined) {
+      updateData.description = body.description;
+    }
+    if (body.projectId !== undefined) {
+      updateData.projectId = body.projectId; // Can be null to remove project
+    }
+
     // Update meeting
     const updated = await prisma.meeting.update({
       where: { id },
-      data: {
-        title: body.title,
-        description: body.description,
+      data: updateData,
+      include: {
+        project: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            icon: true,
+          },
+        },
+        tags: {
+          select: {
+            tag: {
+              select: {
+                id: true,
+                name: true,
+                color: true,
+              },
+            },
+          },
+        },
       },
     });
+
+    // Update tags if provided
+    if (body.tagIds !== undefined && Array.isArray(body.tagIds)) {
+      // Remove existing tags
+      await prisma.meetingTag.deleteMany({
+        where: { meetingId: id },
+      });
+
+      // Add new tags
+      if (body.tagIds.length > 0) {
+        await prisma.meetingTag.createMany({
+          data: body.tagIds.map((tagId: string) => ({
+            meetingId: id,
+            tagId,
+          })),
+        });
+      }
+
+      // Fetch updated meeting with new tags
+      const finalMeeting = await prisma.meeting.findUnique({
+        where: { id },
+        include: {
+          project: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+              icon: true,
+            },
+          },
+          tags: {
+            select: {
+              tag: {
+                select: {
+                  id: true,
+                  name: true,
+                  color: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Update speaker labels if provided
+      if (body.speakers && Array.isArray(body.speakers)) {
+        for (const speaker of body.speakers) {
+          if (speaker.id && speaker.label !== undefined) {
+            await prisma.speaker.update({
+              where: { id: speaker.id },
+              data: { label: speaker.label },
+            });
+          }
+        }
+      }
+
+      return NextResponse.json(finalMeeting);
+    }
 
     // Update speaker labels if provided
     if (body.speakers && Array.isArray(body.speakers)) {
