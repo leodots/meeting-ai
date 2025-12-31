@@ -26,7 +26,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PageContainer } from "@/components/layout";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Project {
   id: string;
@@ -88,18 +90,11 @@ function ProjectCard({
 }: {
   project: Project;
   onEdit: (project: Project) => void;
-  onDelete: (id: string) => void;
+  onDelete: (project: Project) => void;
   onClick: (project: Project) => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    await onDelete(project.id);
-    setIsDeleting(false);
-  };
 
   const meetingCount = project._count?.meetings || 0;
 
@@ -194,16 +189,11 @@ function ProjectCard({
                 <button
                   onClick={() => {
                     setShowMenu(false);
-                    handleDelete();
+                    onDelete(project);
                   }}
-                  disabled={isDeleting}
                   className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
                 >
-                  {isDeleting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
+                  <Trash2 className="h-4 w-4" />
                   Delete
                 </button>
               </motion.div>
@@ -223,18 +213,11 @@ function TagCard({
 }: {
   tag: Tag;
   onEdit: (tag: Tag) => void;
-  onDelete: (id: string) => void;
+  onDelete: (tag: Tag) => void;
   onClick: (tag: Tag) => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-
-  const handleDelete = async () => {
-    setIsDeleting(true);
-    await onDelete(tag.id);
-    setIsDeleting(false);
-  };
 
   const meetingCount = tag._count?.meetings || 0;
 
@@ -329,16 +312,11 @@ function TagCard({
                 <button
                   onClick={() => {
                     setShowMenu(false);
-                    handleDelete();
+                    onDelete(tag);
                   }}
-                  disabled={isDeleting}
                   className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
                 >
-                  {isDeleting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
+                  <Trash2 className="h-4 w-4" />
                   Delete
                 </button>
               </motion.div>
@@ -369,6 +347,11 @@ export default function OrganizePage() {
   const [tagName, setTagName] = useState("");
   const [tagColor, setTagColor] = useState(COLORS[5]);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Delete confirmation dialogs
+  const [deleteProjectDialog, setDeleteProjectDialog] = useState<{ open: boolean; project: Project | null }>({ open: false, project: null });
+  const [deleteTagDialog, setDeleteTagDialog] = useState<{ open: boolean; tag: Tag | null }>({ open: false, tag: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchProjects();
@@ -464,9 +447,13 @@ export default function OrganizePage() {
       if (response.ok) {
         await fetchProjects();
         resetProjectForm();
+        toast.success(editingProject ? "Project updated" : "Project created");
+      } else {
+        toast.error("Failed to save project");
       }
     } catch (error) {
       console.error("Failed to save project:", error);
+      toast.error("Failed to save project");
     } finally {
       setIsSaving(false);
     }
@@ -492,37 +479,67 @@ export default function OrganizePage() {
       if (response.ok) {
         await fetchTags();
         resetTagForm();
+        toast.success(editingTag ? "Tag updated" : "Tag created");
+      } else {
+        toast.error("Failed to save tag");
       }
     } catch (error) {
       console.error("Failed to save tag:", error);
+      toast.error("Failed to save tag");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDeleteProject = async (id: string) => {
+  const openDeleteProjectDialog = (project: Project) => {
+    setDeleteProjectDialog({ open: true, project });
+  };
+
+  const openDeleteTagDialog = (tag: Tag) => {
+    setDeleteTagDialog({ open: true, tag });
+  };
+
+  const handleDeleteProject = async () => {
+    if (!deleteProjectDialog.project) return;
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/projects/${id}`, {
+      const response = await fetch(`/api/projects/${deleteProjectDialog.project.id}`, {
         method: "DELETE",
       });
       if (response.ok) {
-        setProjects((prev) => prev.filter((p) => p.id !== id));
+        setProjects((prev) => prev.filter((p) => p.id !== deleteProjectDialog.project!.id));
+        toast.success("Project deleted");
+        setDeleteProjectDialog({ open: false, project: null });
+      } else {
+        toast.error("Failed to delete project");
       }
     } catch (error) {
       console.error("Failed to delete project:", error);
+      toast.error("Failed to delete project");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
-  const handleDeleteTag = async (id: string) => {
+  const handleDeleteTag = async () => {
+    if (!deleteTagDialog.tag) return;
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/tags/${id}`, {
+      const response = await fetch(`/api/tags/${deleteTagDialog.tag.id}`, {
         method: "DELETE",
       });
       if (response.ok) {
-        setTags((prev) => prev.filter((t) => t.id !== id));
+        setTags((prev) => prev.filter((t) => t.id !== deleteTagDialog.tag!.id));
+        toast.success("Tag deleted");
+        setDeleteTagDialog({ open: false, tag: null });
+      } else {
+        toast.error("Failed to delete tag");
       }
     } catch (error) {
       console.error("Failed to delete tag:", error);
+      toast.error("Failed to delete tag");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -651,7 +668,7 @@ export default function OrganizePage() {
                         key={project.id}
                         project={project}
                         onEdit={handleEditProject}
-                        onDelete={handleDeleteProject}
+                        onDelete={openDeleteProjectDialog}
                         onClick={handleProjectClick}
                       />
                     ))}
@@ -763,7 +780,7 @@ export default function OrganizePage() {
                         key={tag.id}
                         tag={tag}
                         onEdit={handleEditTag}
-                        onDelete={handleDeleteTag}
+                        onDelete={openDeleteTagDialog}
                         onClick={handleTagClick}
                       />
                     ))}
@@ -774,6 +791,32 @@ export default function OrganizePage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Delete Project Dialog */}
+      <AlertDialog
+        open={deleteProjectDialog.open}
+        onOpenChange={(open) => setDeleteProjectDialog({ open, project: open ? deleteProjectDialog.project : null })}
+        title="Delete Project"
+        description={`Are you sure you want to delete "${deleteProjectDialog.project?.name}"? Meetings in this project will not be deleted, but will no longer be associated with this project.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleDeleteProject}
+        isLoading={isDeleting}
+      />
+
+      {/* Delete Tag Dialog */}
+      <AlertDialog
+        open={deleteTagDialog.open}
+        onOpenChange={(open) => setDeleteTagDialog({ open, tag: open ? deleteTagDialog.tag : null })}
+        title="Delete Tag"
+        description={`Are you sure you want to delete "${deleteTagDialog.tag?.name}"? This tag will be removed from all meetings.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleDeleteTag}
+        isLoading={isDeleting}
+      />
     </PageContainer>
   );
 }

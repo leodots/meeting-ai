@@ -32,6 +32,7 @@ export interface AnalysisResult {
   keyPoints: KeyPoint[];
   actionItems: ActionItem[];
   speakerNames: SpeakerName[];
+  meetingDocument: string;
   rawResponse: object;
 }
 
@@ -101,16 +102,18 @@ Provide your response in this exact JSON format (and ONLY this JSON, no other te
       "speakerIndex": 0,
       "name": "Name of the speaker if mentioned"
     }
-  ]
+  ],
+  "meetingDocument": "A comprehensive formal document about the meeting. This should be a well-structured document with: an introduction explaining the meeting context and participants, detailed explanations of each topic discussed, key decisions and their rationale, action items with context, and a conclusion. Write it as a professional meeting document that someone who wasn't present could read to fully understand what happened."
 }
 
 Guidelines:
-- Extract 3-7 main topics discussed
-- Identify 5-10 key points or decisions
-- List any action items mentioned (who needs to do what)
+- Extract ALL relevant topics discussed - include as many as necessary for complete understanding
+- Identify ALL key points and decisions - do not limit the number, include everything important
+- List ALL action items mentioned (who needs to do what) - include every actionable task
 - Focus on actionable insights and important decisions
 - If speakers are identified (e.g., [Speaker 0], [Speaker 1]), try to attribute key points to them
-- Be concise but comprehensive
+- Be comprehensive and thorough - quality and completeness are more important than brevity
+- The meetingDocument should be a formal, well-written document that provides complete context and understanding of the meeting
 - IMPORTANT: Try to identify speaker names from the transcript. Look for:
   * Self-introductions: "My name is X", "I'm X", "This is X speaking"
   * Direct mentions: "X, what do you think?", "As X said..."
@@ -156,6 +159,7 @@ ${transcript}`;
           speakerIndex: s.speakerIndex,
           name: s.name,
         })),
+      meetingDocument: jsonData.meetingDocument || "",
       rawResponse: { response: response },
     };
   } catch (parseError) {
@@ -167,6 +171,7 @@ ${transcript}`;
       keyPoints: [],
       actionItems: [],
       speakerNames: [],
+      meetingDocument: "",
       rawResponse: { response: response, parseError: String(parseError) },
     };
   }

@@ -113,6 +113,9 @@ export async function PATCH(
     if (body.projectId !== undefined) {
       updateData.projectId = body.projectId; // Can be null to remove project
     }
+    if (body.favorite !== undefined) {
+      updateData.favorite = body.favorite;
+    }
 
     // Update meeting
     const updated = await prisma.meeting.update({

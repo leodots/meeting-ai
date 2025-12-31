@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const projectId = searchParams.get("project");
     const tagId = searchParams.get("tag");
+    const favorite = searchParams.get("favorite");
 
     const where = {
       userId: session.user.id,
@@ -26,12 +27,13 @@ export async function GET(request: NextRequest) {
           some: { tagId },
         },
       }),
+      ...(favorite === "true" && { favorite: true }),
     };
 
     const [meetings, total] = await Promise.all([
       prisma.meeting.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ favorite: "desc" }, { createdAt: "desc" }],
         skip: (page - 1) * limit,
         take: limit,
         select: {
@@ -41,6 +43,7 @@ export async function GET(request: NextRequest) {
           language: true,
           status: true,
           duration: true,
+          favorite: true,
           uploadedAt: true,
           processedAt: true,
           createdAt: true,

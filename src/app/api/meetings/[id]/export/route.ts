@@ -65,6 +65,7 @@ function generateMarkdown(meeting: {
     topics: Topic[];
     keyPoints: KeyPoint[];
     actionItems: ActionItem[];
+    meetingDocument?: string | null;
   } | null;
 }): string {
   const lines: string[] = [];
@@ -135,6 +136,14 @@ function generateMarkdown(meeting: {
         const assignee = item.assignee ? ` (${item.assignee})` : "";
         lines.push(`- [ ] ${priority} ${item.item}${assignee}`);
       }
+      lines.push("");
+    }
+
+    // Meeting Document
+    if (meeting.analysis.meetingDocument) {
+      lines.push("## Meeting Document");
+      lines.push("");
+      lines.push(meeting.analysis.meetingDocument);
       lines.push("");
     }
   }
@@ -218,6 +227,7 @@ export async function GET(
           topics: meeting.analysis.topics as unknown as Topic[],
           keyPoints: meeting.analysis.keyPoints as unknown as KeyPoint[],
           actionItems: meeting.analysis.actionItems as unknown as ActionItem[],
+          meetingDocument: meeting.analysis.meetingDocument,
         }
       : null;
 

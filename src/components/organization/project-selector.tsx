@@ -152,9 +152,11 @@ export function ProjectSelector({
                 placeholder="Search or create..."
                 className="w-full bg-transparent px-2 py-1 text-sm outline-none placeholder:text-zinc-400"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && canCreateNew) {
+                  if (e.key === "Enter") {
                     e.preventDefault();
-                    handleCreate();
+                    if (canCreateNew) {
+                      handleCreate();
+                    }
                   }
                 }}
               />
@@ -163,6 +165,7 @@ export function ProjectSelector({
             <div className="max-h-[200px] overflow-auto p-1">
               {selectedProject && (
                 <button
+                  type="button"
                   onClick={() => handleSelect(null)}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-zinc-500 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900"
                 >
@@ -173,6 +176,7 @@ export function ProjectSelector({
 
               {filteredProjects.map((project) => (
                 <button
+                  type="button"
                   key={project.id}
                   onClick={() => handleSelect(project)}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900"
@@ -193,6 +197,7 @@ export function ProjectSelector({
 
               {canCreateNew && (
                 <button
+                  type="button"
                   onClick={handleCreate}
                   disabled={isCreating}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"

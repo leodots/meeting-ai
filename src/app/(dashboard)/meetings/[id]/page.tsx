@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
+import ReactMarkdown from "react-markdown";
 import {
   ArrowLeft,
   Calendar,
@@ -17,17 +18,26 @@ import {
   ListChecks,
   Loader2,
   MessageSquare,
+  Pencil,
   Play,
   Printer,
+  Star,
   Trash2,
   Users,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PageContainer } from "@/components/layout";
 import { ProjectSelector, TagSelector } from "@/components/organization";
+import { AlertDialog } from "@/components/ui/alert-dialog";
+import { CopyButton } from "@/components/ui/copy-button";
+import { SkeletonMeetingDetail } from "@/components/ui/skeleton";
+import { SIDEBAR_REFRESH_EVENT } from "@/components/layout/sidebar";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Project {
   id: string;
@@ -84,6 +94,7 @@ interface Analysis {
   topics: Topic[];
   keyPoints: KeyPoint[];
   actionItems: ActionItem[];
+  meetingDocument?: string;
 }
 
 interface Meeting {
@@ -93,6 +104,7 @@ interface Meeting {
   language: string;
   status: string;
   duration: number | null;
+  favorite: boolean;
   uploadedAt: string;
   processedAt: string | null;
   transcript: Transcript | null;
@@ -129,6 +141,7 @@ export default function MeetingDetailPage({
   );
   const [processing, setProcessing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Organization editing state
   const [isEditingOrganization, setIsEditingOrganization] = useState(false);
@@ -138,10 +151,36 @@ export default function MeetingDetailPage({
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [savingOrganization, setSavingOrganization] = useState(false);
 
+  // Title/Description editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
+
+  // Speaker editing state
+  const [editingSpeakerId, setEditingSpeakerId] = useState<string | null>(null);
+  const [editingSpeakerLabel, setEditingSpeakerLabel] = useState("");
+  const [savingSpeaker, setSavingSpeaker] = useState(false);
+
+  const fetchMeeting = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/meetings/${id}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch meeting");
+      }
+      const data = await response.json();
+      setMeeting(data);
+    } catch {
+      setError("Failed to fetch meeting");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchMeeting();
     fetchProjectsAndTags();
-  }, [id]);
+  }, [fetchMeeting]);
 
   // Sync selected project/tags when meeting loads
   useEffect(() => {
@@ -220,9 +259,13 @@ export default function MeetingDetailPage({
         const updated = await response.json();
         setMeeting((prev) => prev ? { ...prev, project: updated.project, tags: updated.tags } : null);
         setIsEditingOrganization(false);
+        toast.success("Organization updated");
+      } else {
+        toast.error("Failed to update organization");
       }
     } catch (err) {
       console.error("Failed to save organization:", err);
+      toast.error("Failed to update organization");
     } finally {
       setSavingOrganization(false);
     }
@@ -236,6 +279,127 @@ export default function MeetingDetailPage({
     setIsEditingOrganization(false);
   }
 
+  // Toggle favorite
+  async function toggleFavorite() {
+    if (!meeting) return;
+    const newFavorite = !meeting.favorite;
+
+    // Optimistic update
+    setMeeting((prev) => prev ? { ...prev, favorite: newFavorite } : null);
+
+    try {
+      const response = await fetch(`/api/meetings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ favorite: newFavorite }),
+      });
+      if (!response.ok) throw new Error("Failed to update");
+      toast.success(newFavorite ? "Added to favorites" : "Removed from favorites");
+    } catch {
+      // Revert on error
+      setMeeting((prev) => prev ? { ...prev, favorite: !newFavorite } : null);
+      toast.error("Failed to update favorite");
+    }
+  }
+
+  // Start editing title/description
+  function startEditingTitle() {
+    if (meeting) {
+      setEditTitle(meeting.title);
+      setEditDescription(meeting.description || "");
+      setIsEditingTitle(true);
+    }
+  }
+
+  // Save title/description
+  async function saveTitle() {
+    if (!meeting || !editTitle.trim()) return;
+    setSavingTitle(true);
+    try {
+      const response = await fetch(`/api/meetings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          description: editDescription.trim() || null,
+        }),
+      });
+      if (response.ok) {
+        setMeeting((prev) => prev ? { ...prev, title: editTitle.trim(), description: editDescription.trim() || null } : null);
+        setIsEditingTitle(false);
+        toast.success("Meeting updated");
+      } else {
+        toast.error("Failed to update meeting");
+      }
+    } catch {
+      toast.error("Failed to update meeting");
+    } finally {
+      setSavingTitle(false);
+    }
+  }
+
+  function cancelEditTitle() {
+    setIsEditingTitle(false);
+    setEditTitle("");
+    setEditDescription("");
+  }
+
+  // Start editing speaker label
+  function startEditingSpeaker(speaker: Speaker) {
+    setEditingSpeakerId(speaker.id);
+    setEditingSpeakerLabel(speaker.label || "");
+  }
+
+  // Save speaker label
+  async function saveSpeakerLabel() {
+    if (!editingSpeakerId) return;
+    setSavingSpeaker(true);
+    try {
+      const response = await fetch(`/api/meetings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          speakers: [{ id: editingSpeakerId, label: editingSpeakerLabel.trim() || null }],
+        }),
+      });
+      if (response.ok) {
+        const newLabel = editingSpeakerLabel.trim() || null;
+        setMeeting((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            speakers: prev.speakers.map((s) =>
+              s.id === editingSpeakerId ? { ...s, label: newLabel } : s
+            ),
+            // Also update speaker labels in transcript utterances
+            transcript: prev.transcript ? {
+              ...prev.transcript,
+              utterances: prev.transcript.utterances.map((u) =>
+                u.speaker.id === editingSpeakerId
+                  ? { ...u, speaker: { ...u.speaker, label: newLabel } }
+                  : u
+              ),
+            } : null,
+          };
+        });
+        toast.success("Speaker renamed");
+        setEditingSpeakerId(null);
+        setEditingSpeakerLabel("");
+      } else {
+        toast.error("Failed to rename speaker");
+      }
+    } catch {
+      toast.error("Failed to rename speaker");
+    } finally {
+      setSavingSpeaker(false);
+    }
+  }
+
+  function cancelEditSpeaker() {
+    setEditingSpeakerId(null);
+    setEditingSpeakerLabel("");
+  }
+
   // Poll for updates while processing
   useEffect(() => {
     if (
@@ -245,22 +409,7 @@ export default function MeetingDetailPage({
       const interval = setInterval(fetchMeeting, 3000);
       return () => clearInterval(interval);
     }
-  }, [meeting?.status]);
-
-  async function fetchMeeting() {
-    try {
-      const response = await fetch(`/api/meetings/${id}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch meeting");
-      }
-      const data = await response.json();
-      setMeeting(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [meeting?.status, fetchMeeting]);
 
   async function startProcessing() {
     setProcessing(true);
@@ -278,18 +427,20 @@ export default function MeetingDetailPage({
   }
 
   async function deleteMeeting() {
-    if (!confirm("Are you sure you want to delete this meeting?")) return;
-
     setDeleting(true);
     try {
       const response = await fetch(`/api/meetings/${id}`, { method: "DELETE" });
       if (!response.ok) {
         throw new Error("Failed to delete meeting");
       }
+      // Refresh sidebar counts
+      window.dispatchEvent(new Event(SIDEBAR_REFRESH_EVENT));
+      toast.success("Meeting deleted");
       router.push("/meetings");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete meeting");
+      toast.error(err instanceof Error ? err.message : "Failed to delete meeting");
       setDeleting(false);
+      setShowDeleteDialog(false);
     }
   }
 
@@ -307,12 +458,13 @@ export default function MeetingDetailPage({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err) {
-      setError("Failed to export markdown");
+      toast.success("Markdown exported");
+    } catch {
+      toast.error("Failed to export markdown");
     }
   }
 
-  async function exportPDF() {
+  async function exportHTML() {
     try {
       const response = await fetch(`/api/meetings/${id}/export?format=html`);
       if (!response.ok) throw new Error("Export failed");
@@ -326,17 +478,16 @@ export default function MeetingDetailPage({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err) {
-      setError("Failed to export PDF");
+      toast.success("HTML exported");
+    } catch {
+      toast.error("Failed to export HTML");
     }
   }
 
   if (loading) {
     return (
       <PageContainer>
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-        </div>
+        <SkeletonMeetingDetail />
       </PageContainer>
     );
   }
@@ -370,15 +521,75 @@ export default function MeetingDetailPage({
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-                {meeting.title}
-              </h1>
-              {meeting.description && (
-                <p className="mt-1 text-zinc-500 dark:text-zinc-400">
-                  {meeting.description}
-                </p>
-              )}
+            <div className="flex-1">
+              <AnimatePresence mode="wait">
+                {isEditingTitle ? (
+                  <motion.div
+                    key="editing-title"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-3"
+                  >
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      placeholder="Meeting title"
+                      className="text-lg font-semibold"
+                      autoFocus
+                    />
+                    <Textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      placeholder="Description (optional)"
+                      rows={2}
+                      className="resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={saveTitle} disabled={savingTitle || !editTitle.trim()}>
+                        {savingTitle ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}
+                        Save
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={cancelEditTitle} disabled={savingTitle}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div key="display-title" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+                        {meeting.title}
+                      </h1>
+                      <button
+                        onClick={toggleFavorite}
+                        className={cn(
+                          "rounded-full p-1.5 transition-colors",
+                          meeting.favorite
+                            ? "text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+                            : "text-zinc-300 hover:bg-zinc-100 hover:text-yellow-500 dark:text-zinc-600 dark:hover:bg-zinc-800"
+                        )}
+                        title={meeting.favorite ? "Remove from favorites" : "Add to favorites"}
+                      >
+                        <Star className={cn("h-5 w-5", meeting.favorite && "fill-current")} />
+                      </button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                        onClick={startEditingTitle}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {meeting.description && (
+                      <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+                        {meeting.description}
+                      </p>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-zinc-500 dark:text-zinc-400">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
@@ -544,15 +755,15 @@ export default function MeetingDetailPage({
                   <Download className="mr-2 h-4 w-4" />
                   Markdown
                 </Button>
-                <Button variant="outline" onClick={exportPDF}>
+                <Button variant="outline" onClick={exportHTML}>
                   <Printer className="mr-2 h-4 w-4" />
-                  PDF
+                  HTML
                 </Button>
               </>
             )}
             <Button
               variant="outline"
-              onClick={deleteMeeting}
+              onClick={() => setShowDeleteDialog(true)}
               disabled={deleting}
               className="text-red-500 hover:text-red-600"
             >
@@ -565,6 +776,19 @@ export default function MeetingDetailPage({
             </Button>
           </div>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          title="Delete Meeting"
+          description={`Are you sure you want to delete "${meeting.title}"? This action cannot be undone and will permanently remove the meeting, transcript, and analysis.`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          variant="danger"
+          onConfirm={deleteMeeting}
+          isLoading={deleting}
+        />
 
         {/* Processing Status */}
         {isProcessing && (
@@ -651,10 +875,17 @@ export default function MeetingDetailPage({
             >
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <FileText className="h-5 w-5 text-zinc-400" />
-                    Summary
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <FileText className="h-5 w-5 text-zinc-400" />
+                      Summary
+                    </CardTitle>
+                    <CopyButton
+                      text={meeting.analysis.summary}
+                      label="Copy"
+                      successMessage="Summary copied"
+                    />
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <p className="whitespace-pre-wrap text-zinc-600 dark:text-zinc-300">
@@ -743,6 +974,39 @@ export default function MeetingDetailPage({
                 </CardContent>
               </Card>
             </motion.div>
+
+            {/* Meeting Document */}
+            {meeting.analysis.meetingDocument && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="lg:col-span-2"
+              >
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <FileText className="h-5 w-5 text-zinc-400" />
+                        Meeting Document
+                      </CardTitle>
+                      <CopyButton
+                        text={meeting.analysis.meetingDocument}
+                        label="Copy"
+                        successMessage="Document copied"
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="prose prose-zinc dark:prose-invert max-w-none prose-headings:text-zinc-800 dark:prose-headings:text-zinc-200 prose-p:text-zinc-600 dark:prose-p:text-zinc-300 prose-strong:text-zinc-800 dark:prose-strong:text-zinc-200 prose-li:text-zinc-600 dark:prose-li:text-zinc-300">
+                      <ReactMarkdown>
+                        {meeting.analysis.meetingDocument}
+                      </ReactMarkdown>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </div>
         )}
 
@@ -754,22 +1018,69 @@ export default function MeetingDetailPage({
           >
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Full Transcript</CardTitle>
-                  {/* Speaker Legend */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <CardTitle className="text-lg">Full Transcript</CardTitle>
+                    <CopyButton
+                      text={meeting.transcript.fullText}
+                      label="Copy"
+                      successMessage="Transcript copied"
+                    />
+                  </div>
+                  {/* Speaker Legend with Rename */}
                   <div className="flex flex-wrap gap-3">
                     {meeting.speakers.map((speaker) => (
-                      <div
-                        key={speaker.id}
-                        className="flex items-center gap-2 text-sm"
-                      >
+                      <div key={speaker.id} className="flex items-center gap-2 text-sm">
                         <span
                           className="h-3 w-3 rounded-full"
                           style={{ backgroundColor: speaker.color }}
                         />
-                        <span className="text-zinc-600 dark:text-zinc-300">
-                          {speaker.label || `Speaker ${speaker.speakerIndex + 1}`}
-                        </span>
+                        {editingSpeakerId === speaker.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              value={editingSpeakerLabel}
+                              onChange={(e) => setEditingSpeakerLabel(e.target.value)}
+                              placeholder={`Speaker ${speaker.speakerIndex + 1}`}
+                              className="h-7 w-32 text-sm"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveSpeakerLabel();
+                                if (e.key === "Escape") cancelEditSpeaker();
+                              }}
+                            />
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={saveSpeakerLabel}
+                              disabled={savingSpeaker}
+                            >
+                              {savingSpeaker ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Check className="h-3 w-3" />
+                              )}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6"
+                              onClick={cancelEditSpeaker}
+                              disabled={savingSpeaker}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => startEditingSpeaker(speaker)}
+                            className="group flex items-center gap-1 rounded px-1 py-0.5 text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            title="Click to rename"
+                          >
+                            {speaker.label || `Speaker ${speaker.speakerIndex + 1}`}
+                            <Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -777,7 +1088,7 @@ export default function MeetingDetailPage({
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {meeting.transcript.utterances.map((utterance, i) => (
+                  {meeting.transcript.utterances.map((utterance) => (
                     <div
                       key={utterance.id}
                       className="flex gap-4 rounded-lg p-3 hover:bg-zinc-50 dark:hover:bg-zinc-900"

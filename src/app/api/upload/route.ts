@@ -4,6 +4,7 @@ import { join } from "path";
 import { nanoid } from "nanoid";
 import { auth } from "../../../../auth";
 import { prisma } from "@/lib/db/prisma";
+import { apiRateLimiter, RATE_LIMITS } from "@/lib/rate-limit";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
 const MAX_FILE_SIZE = (parseInt(process.env.MAX_FILE_SIZE_MB || "100") * 1024 * 1024);
@@ -22,6 +23,20 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate limit uploads per user
+    const rateLimitResult = apiRateLimiter.check(
+      `upload:${session.user.id}`,
+      RATE_LIMITS.upload.limit,
+      RATE_LIMITS.upload.windowMs
+    );
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: `Upload limit reached. Try again in ${rateLimitResult.resetIn} seconds.` },
+        { status: 429, headers: { "Retry-After": String(rateLimitResult.resetIn) } }
+      );
     }
 
     // Parse form data

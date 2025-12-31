@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -8,18 +8,20 @@ import {
   Calendar,
   Clock,
   Folder,
-  Loader2,
   Mic,
   Plus,
   Search,
+  Star,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageContainer } from "@/components/layout";
-import { TagBadge, ProjectBadge } from "@/components/organization";
+import { TagBadge } from "@/components/organization";
+import { SkeletonMeetingList } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Project {
   id: string;
@@ -41,6 +43,7 @@ interface Meeting {
   language: string;
   status: "PENDING" | "TRANSCRIBING" | "ANALYZING" | "COMPLETED" | "FAILED";
   duration: number | null;
+  favorite: boolean;
   uploadedAt: string;
   processedAt: string | null;
   createdAt: string;
@@ -100,11 +103,7 @@ export default function MeetingsPage() {
 
   const projectId = searchParams.get("project");
   const tagId = searchParams.get("tag");
-
-  useEffect(() => {
-    fetchMeetings();
-    fetchTags();
-  }, [projectId, tagId]);
+  const showFavorites = searchParams.get("favorite") === "true";
 
   // Fetch active project info if filtered by project
   useEffect(() => {
@@ -126,7 +125,7 @@ export default function MeetingsPage() {
     fetchProject();
   }, [projectId]);
 
-  async function fetchTags() {
+  const fetchTags = useCallback(async () => {
     try {
       const response = await fetch("/api/tags");
       if (response.ok) {
@@ -136,14 +135,15 @@ export default function MeetingsPage() {
     } catch (error) {
       console.error("Failed to fetch tags:", error);
     }
-  }
+  }, []);
 
-  async function fetchMeetings() {
+  const fetchMeetings = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
       if (projectId) params.set("project", projectId);
       if (tagId) params.set("tag", tagId);
+      if (showFavorites) params.set("favorite", "true");
 
       const response = await fetch(`/api/meetings?${params.toString()}`);
       if (!response.ok) {
@@ -156,7 +156,12 @@ export default function MeetingsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [projectId, tagId, showFavorites]);
+
+  useEffect(() => {
+    fetchMeetings();
+    fetchTags();
+  }, [fetchMeetings, fetchTags]);
 
   const clearFilters = () => {
     router.push("/meetings");
@@ -170,10 +175,51 @@ export default function MeetingsPage() {
   };
 
   const removeTagFilter = () => {
-    if (projectId) {
-      router.push(`/meetings?project=${projectId}`);
-    } else {
-      router.push("/meetings");
+    const params = new URLSearchParams();
+    if (projectId) params.set("project", projectId);
+    if (showFavorites) params.set("favorite", "true");
+    router.push(`/meetings?${params.toString()}`);
+  };
+
+  const toggleFavoritesFilter = () => {
+    const params = new URLSearchParams();
+    if (projectId) params.set("project", projectId);
+    if (tagId) params.set("tag", tagId);
+    if (!showFavorites) params.set("favorite", "true");
+    router.push(`/meetings?${params.toString()}`);
+  };
+
+  const toggleFavorite = async (e: React.MouseEvent, meetingId: string, currentFavorite: boolean) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Optimistically update UI
+    setMeetings((prev) =>
+      prev.map((m) =>
+        m.id === meetingId ? { ...m, favorite: !currentFavorite } : m
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/meetings/${meetingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ favorite: !currentFavorite }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update favorite");
+      }
+
+      toast.success(currentFavorite ? "Removed from favorites" : "Added to favorites");
+    } catch {
+      // Revert on error
+      setMeetings((prev) =>
+        prev.map((m) =>
+          m.id === meetingId ? { ...m, favorite: currentFavorite } : m
+        )
+      );
+      toast.error("Failed to update favorite");
     }
   };
 
@@ -222,7 +268,7 @@ export default function MeetingsPage() {
 
         {/* Active Filters */}
         <AnimatePresence>
-          {(projectId || tagId) && (
+          {(projectId || tagId || showFavorites) && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
@@ -233,6 +279,18 @@ export default function MeetingsPage() {
                 <span className="text-sm text-zinc-500 dark:text-zinc-400">
                   Filters:
                 </span>
+                {showFavorites && (
+                  <motion.button
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    onClick={toggleFavoritesFilter}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-yellow-300 bg-yellow-50 px-2.5 py-1 text-sm font-medium text-yellow-700 transition-colors hover:bg-yellow-100 dark:border-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50"
+                  >
+                    <Star className="h-3.5 w-3.5 fill-current" />
+                    Favorites
+                    <X className="h-3.5 w-3.5" />
+                  </motion.button>
+                )}
                 {activeProject && (
                   <motion.button
                     initial={{ scale: 0.8, opacity: 0 }}
@@ -287,6 +345,18 @@ export default function MeetingsPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          <Button
+            variant={showFavorites ? "default" : "outline"}
+            size="sm"
+            onClick={toggleFavoritesFilter}
+            className={cn(
+              "gap-1.5",
+              showFavorites && "bg-yellow-500 text-white hover:bg-yellow-600"
+            )}
+          >
+            <Star className={cn("h-4 w-4", showFavorites && "fill-current")} />
+            Favorites
+          </Button>
           {allTags.length > 0 && !tagId && (
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs text-zinc-400 dark:text-zinc-500">Tags:</span>
@@ -312,11 +382,7 @@ export default function MeetingsPage() {
         </div>
 
         {/* Loading State */}
-        {loading && (
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-          </div>
-        )}
+        {loading && <SkeletonMeetingList count={5} />}
 
         {/* Error State */}
         {error && !loading && (
@@ -335,81 +401,101 @@ export default function MeetingsPage() {
           </Card>
         )}
 
-        {/* Meetings List */}
+        {/* Meetings Grid */}
         {!loading && !error && filteredMeetings.length > 0 && (
-          <div className="grid gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredMeetings.map((meeting, index) => (
               <motion.div
                 key={meeting.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
+                transition={{ delay: index * 0.03 }}
               >
                 <Link href={`/meetings/${meeting.id}`}>
-                  <Card className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                    <CardContent className="flex items-center gap-4 py-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                        {meeting.project?.icon ? (
-                          <span className="text-xl">{meeting.project.icon}</span>
-                        ) : meeting.project ? (
-                          <Folder className="h-5 w-5" style={{ color: meeting.project.color }} />
-                        ) : (
-                          <Mic className="h-5 w-5 text-zinc-500 dark:text-zinc-400" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
-                            {meeting.title}
-                          </h3>
+                  <Card className="h-full transition-all hover:bg-zinc-50 hover:shadow-md dark:hover:bg-zinc-900">
+                    <CardContent className="flex h-full flex-col p-4">
+                      {/* Header: Icon + Status + Favorite */}
+                      <div className="mb-3 flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                            {meeting.project?.icon ? (
+                              <span className="text-lg">{meeting.project.icon}</span>
+                            ) : meeting.project ? (
+                              <Folder className="h-4 w-4" style={{ color: meeting.project.color }} />
+                            ) : (
+                              <Mic className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                            )}
+                          </div>
                           <span
                             className={cn(
-                              "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+                              "rounded-full px-2 py-0.5 text-xs font-medium",
                               statusConfig[meeting.status].className
                             )}
                           >
                             {statusConfig[meeting.status].label}
                           </span>
                         </div>
+                        <button
+                          onClick={(e) => toggleFavorite(e, meeting.id, meeting.favorite)}
+                          className={cn(
+                            "shrink-0 rounded-full p-1.5 transition-colors",
+                            meeting.favorite
+                              ? "text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+                              : "text-zinc-300 hover:bg-zinc-100 hover:text-yellow-500 dark:text-zinc-600 dark:hover:bg-zinc-800"
+                          )}
+                          title={meeting.favorite ? "Remove from favorites" : "Add to favorites"}
+                        >
+                          <Star className={cn("h-4 w-4", meeting.favorite && "fill-current")} />
+                        </button>
+                      </div>
+
+                      {/* Title & Description */}
+                      <div className="mb-3 flex-1">
+                        <h3 className="line-clamp-2 font-semibold text-zinc-900 dark:text-zinc-50">
+                          {meeting.title}
+                        </h3>
                         {meeting.description && (
-                          <p className="mt-0.5 truncate text-sm text-zinc-500 dark:text-zinc-400">
+                          <p className="mt-1 line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">
                             {meeting.description}
                           </p>
                         )}
-                        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-                          <div className="flex items-center gap-4 text-xs text-zinc-400 dark:text-zinc-500">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {new Date(meeting.uploadedAt).toLocaleDateString()}
+                      </div>
+
+                      {/* Tags */}
+                      {meeting.tags.length > 0 && (
+                        <div className="mb-3 flex flex-wrap gap-1">
+                          {meeting.tags.slice(0, 3).map(({ tag }) => (
+                            <span
+                              key={tag.id}
+                              className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                              style={{
+                                backgroundColor: `${tag.color}20`,
+                                color: tag.color,
+                              }}
+                            >
+                              {tag.name}
                             </span>
-                            {meeting.duration && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {formatDuration(meeting.duration)}
-                              </span>
-                            )}
-                          </div>
-                          {meeting.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {meeting.tags.map(({ tag }) => (
-                                <span
-                                  key={tag.id}
-                                  className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-                                  style={{
-                                    backgroundColor: `${tag.color}20`,
-                                    color: tag.color,
-                                  }}
-                                >
-                                  <span
-                                    className="h-1 w-1 rounded-full"
-                                    style={{ backgroundColor: tag.color }}
-                                  />
-                                  {tag.name}
-                                </span>
-                              ))}
-                            </div>
+                          ))}
+                          {meeting.tags.length > 3 && (
+                            <span className="text-[10px] text-zinc-400">
+                              +{meeting.tags.length - 3}
+                            </span>
                           )}
                         </div>
+                      )}
+
+                      {/* Footer: Date & Duration */}
+                      <div className="flex items-center gap-3 border-t border-zinc-100 pt-3 text-xs text-zinc-400 dark:border-zinc-800 dark:text-zinc-500">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(meeting.uploadedAt).toLocaleDateString()}
+                        </span>
+                        {meeting.duration && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDuration(meeting.duration)}
+                          </span>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
