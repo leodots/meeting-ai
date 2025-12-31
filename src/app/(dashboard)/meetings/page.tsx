@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { DynamicIcon } from "@/components/ui/icon-picker";
 import { PageContainer } from "@/components/layout";
 import { TagBadge } from "@/components/organization";
 import { SkeletonMeetingList } from "@/components/ui/skeleton";
@@ -245,7 +246,7 @@ export default function MeetingsPage() {
                   animate={{ scale: 1, opacity: 1 }}
                 >
                   {activeProject.icon ? (
-                    <span className="text-2xl">{activeProject.icon}</span>
+                    <DynamicIcon name={activeProject.icon} className="h-6 w-6" style={{ color: activeProject.color }} />
                   ) : (
                     <Folder className="h-6 w-6" style={{ color: activeProject.color }} />
                   )}
@@ -299,7 +300,7 @@ export default function MeetingsPage() {
                     className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                   >
                     {activeProject.icon ? (
-                      <span>{activeProject.icon}</span>
+                      <DynamicIcon name={activeProject.icon} className="h-3.5 w-3.5" style={{ color: activeProject.color }} />
                     ) : (
                       <Folder className="h-3.5 w-3.5" style={{ color: activeProject.color }} />
                     )}
@@ -419,7 +420,7 @@ export default function MeetingsPage() {
                         <div className="flex items-center gap-3">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
                             {meeting.project?.icon ? (
-                              <span className="text-lg">{meeting.project.icon}</span>
+                              <DynamicIcon name={meeting.project.icon} className="h-5 w-5" style={{ color: meeting.project.color }} />
                             ) : meeting.project ? (
                               <Folder className="h-4 w-4" style={{ color: meeting.project.color }} />
                             ) : (
