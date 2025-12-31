@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Check, ChevronDown, Folder, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DynamicIcon } from "@/components/ui/icon-picker";
 
 interface Project {
   id: string;
@@ -88,23 +89,38 @@ export function ProjectSelector({
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
-      <button
-        type="button"
+      <div
+        role="combobox"
+        aria-expanded={isOpen}
+        tabIndex={0}
         onClick={() => {
           setIsOpen(!isOpen);
           if (!isOpen) {
             setTimeout(() => inputRef.current?.focus(), 0);
           }
         }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+            if (!isOpen) {
+              setTimeout(() => inputRef.current?.focus(), 0);
+            }
+          }
+        }}
         className={cn(
-          "flex h-[42px] w-full items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-left transition-colors dark:border-zinc-800 dark:bg-zinc-950",
+          "flex h-[42px] w-full cursor-pointer items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-left transition-colors dark:border-zinc-800 dark:bg-zinc-950",
           isOpen && "ring-2 ring-zinc-900 ring-offset-2 dark:ring-zinc-100 dark:ring-offset-zinc-950"
         )}
       >
         {selectedProject ? (
           <>
             {selectedProject.icon ? (
-              <span className="text-base">{selectedProject.icon}</span>
+              <DynamicIcon
+                name={selectedProject.icon}
+                className="h-4 w-4"
+                style={{ color: selectedProject.color }}
+              />
             ) : (
               <Folder
                 className="h-4 w-4"
@@ -132,7 +148,7 @@ export function ProjectSelector({
             <ChevronDown className="h-4 w-4 text-zinc-400" />
           </>
         )}
-      </button>
+      </div>
 
       <AnimatePresence>
         {isOpen && (
@@ -182,7 +198,11 @@ export function ProjectSelector({
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900"
                 >
                   {project.icon ? (
-                    <span className="text-base">{project.icon}</span>
+                    <DynamicIcon
+                      name={project.icon}
+                      className="h-4 w-4"
+                      style={{ color: project.color }}
+                    />
                   ) : (
                     <Folder className="h-4 w-4" style={{ color: project.color }} />
                   )}

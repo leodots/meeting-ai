@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
@@ -16,14 +16,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-interface Project {
-  id: string;
-  name: string;
-  color: string;
-  icon?: string | null;
-  _count?: { meetings: number };
-}
+import { useProjects } from "@/lib/hooks/use-projects";
+import { DynamicIcon } from "@/components/ui/icon-picker";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -42,42 +36,23 @@ export const SIDEBAR_REFRESH_EVENT = "sidebar-refresh";
 export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const { projects, isLoading: isLoadingProjects, refresh } = useProjects();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
-  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
 
   const activeProjectId = searchParams.get("project");
 
-  const fetchProjects = useCallback(async () => {
-    try {
-      // Add cache-busting to ensure fresh data
-      const response = await fetch(`/api/projects?_t=${Date.now()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setProjects(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch projects:", error);
-    } finally {
-      setIsLoadingProjects(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
-
   // Listen for sidebar refresh events (e.g., when a meeting is deleted)
+  // This is a fallback for components that still use the event system
   useEffect(() => {
     const handleRefresh = () => {
-      fetchProjects();
+      refresh();
     };
 
     window.addEventListener(SIDEBAR_REFRESH_EVENT, handleRefresh);
     return () => {
       window.removeEventListener(SIDEBAR_REFRESH_EVENT, handleRefresh);
     };
-  }, [fetchProjects]);
+  }, [refresh]);
 
   const sidebarContent = (
     <div className="flex h-full flex-col">
@@ -175,7 +150,11 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                               )}
                             >
                               {project.icon ? (
-                                <span className="text-sm">{project.icon}</span>
+                                <DynamicIcon
+                                  name={project.icon}
+                                  className="h-4 w-4 transition-transform duration-200 group-hover:scale-110"
+                                  style={{ color: project.color }}
+                                />
                               ) : (
                                 <Folder
                                   className="h-4 w-4 transition-transform duration-200 group-hover:scale-110"

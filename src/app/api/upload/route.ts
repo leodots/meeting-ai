@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { auth } from "../../../../auth";
 import { prisma } from "@/lib/db/prisma";
 import { apiRateLimiter, RATE_LIMITS } from "@/lib/rate-limit";
+import { log } from "@/lib/logger";
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
 const MAX_FILE_SIZE = (parseInt(process.env.MAX_FILE_SIZE_MB || "100") * 1024 * 1024);
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!rateLimitResult.success) {
+      log.rateLimitExceeded(session.user.id, "upload");
       return NextResponse.json(
         { error: `Upload limit reached. Try again in ${rateLimitResult.resetIn} seconds.` },
         { status: 429, headers: { "Retry-After": String(rateLimitResult.resetIn) } }
@@ -107,12 +109,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    log.fileUpload(file.name, file.size, session.user.id);
+
     return NextResponse.json({
       id: meeting.id,
       message: "File uploaded successfully",
     });
   } catch (error) {
-    console.error("Upload error:", error);
+    log.error("Upload failed", error);
     return NextResponse.json(
       { error: "Failed to upload file" },
       { status: 500 }

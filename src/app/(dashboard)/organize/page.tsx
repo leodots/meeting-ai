@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { IconPicker, DynamicIcon } from "@/components/ui/icon-picker";
 import {
   Card,
   CardContent,
@@ -29,6 +30,8 @@ import { PageContainer } from "@/components/layout";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { refreshProjects } from "@/lib/hooks/use-projects";
+import { refreshTags } from "@/lib/hooks/use-tags";
 
 interface Project {
   id: string;
@@ -125,7 +128,7 @@ function ProjectCard({
         style={{ backgroundColor: `${project.color}15` }}
       >
         {project.icon ? (
-          <span className="text-xl">{project.icon}</span>
+          <DynamicIcon name={project.icon} className="h-6 w-6" style={{ color: project.color }} />
         ) : (
           <Folder className="h-6 w-6" style={{ color: project.color }} />
         )}
@@ -446,6 +449,7 @@ export default function OrganizePage() {
 
       if (response.ok) {
         await fetchProjects();
+        await refreshProjects(); // Invalidate SWR cache to update sidebar
         resetProjectForm();
         toast.success(editingProject ? "Project updated" : "Project created");
       } else {
@@ -478,6 +482,7 @@ export default function OrganizePage() {
 
       if (response.ok) {
         await fetchTags();
+        await refreshTags(); // Invalidate SWR cache
         resetTagForm();
         toast.success(editingTag ? "Tag updated" : "Tag created");
       } else {
@@ -508,6 +513,7 @@ export default function OrganizePage() {
       });
       if (response.ok) {
         setProjects((prev) => prev.filter((p) => p.id !== deleteProjectDialog.project!.id));
+        await refreshProjects(); // Invalidate SWR cache to update sidebar
         toast.success("Project deleted");
         setDeleteProjectDialog({ open: false, project: null });
       } else {
@@ -530,6 +536,7 @@ export default function OrganizePage() {
       });
       if (response.ok) {
         setTags((prev) => prev.filter((t) => t.id !== deleteTagDialog.tag!.id));
+        await refreshTags(); // Invalidate SWR cache
         toast.success("Tag deleted");
         setDeleteTagDialog({ open: false, tag: null });
       } else {
@@ -615,12 +622,11 @@ export default function OrganizePage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Icon (optional emoji)</Label>
-                        <Input
+                        <Label>Icon (optional)</Label>
+                        <IconPicker
                           value={projectIcon}
-                          onChange={(e) => setProjectIcon(e.target.value)}
-                          placeholder="📁"
-                          className="w-20"
+                          onChange={setProjectIcon}
+                          color={projectColor}
                         />
                       </div>
                       <div className="space-y-2">

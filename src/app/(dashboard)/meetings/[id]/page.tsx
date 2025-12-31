@@ -38,6 +38,7 @@ import { SkeletonMeetingDetail } from "@/components/ui/skeleton";
 import { SIDEBAR_REFRESH_EVENT } from "@/components/layout/sidebar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { refreshProjects } from "@/lib/hooks/use-projects";
 
 interface Project {
   id: string;
@@ -259,6 +260,7 @@ export default function MeetingDetailPage({
         const updated = await response.json();
         setMeeting((prev) => prev ? { ...prev, project: updated.project, tags: updated.tags } : null);
         setIsEditingOrganization(false);
+        await refreshProjects(); // Update sidebar meeting counts
         toast.success("Organization updated");
       } else {
         toast.error("Failed to update organization");
@@ -434,7 +436,7 @@ export default function MeetingDetailPage({
         throw new Error("Failed to delete meeting");
       }
       // Refresh sidebar counts
-      window.dispatchEvent(new Event(SIDEBAR_REFRESH_EVENT));
+      await refreshProjects();
       toast.success("Meeting deleted");
       router.push("/meetings");
     } catch (err) {
@@ -445,6 +447,7 @@ export default function MeetingDetailPage({
   }
 
   async function exportMarkdown() {
+    const toastId = toast.loading("Generating Markdown...");
     try {
       const response = await fetch(`/api/meetings/${id}/export?format=md`);
       if (!response.ok) throw new Error("Export failed");
@@ -458,13 +461,14 @@ export default function MeetingDetailPage({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("Markdown exported");
+      toast.success("Markdown downloaded successfully", { id: toastId });
     } catch {
-      toast.error("Failed to export markdown");
+      toast.error("Failed to export Markdown", { id: toastId });
     }
   }
 
   async function exportHTML() {
+    const toastId = toast.loading("Generating HTML...");
     try {
       const response = await fetch(`/api/meetings/${id}/export?format=html`);
       if (!response.ok) throw new Error("Export failed");
@@ -478,9 +482,30 @@ export default function MeetingDetailPage({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("HTML exported");
+      toast.success("HTML downloaded successfully", { id: toastId });
     } catch {
-      toast.error("Failed to export HTML");
+      toast.error("Failed to export HTML", { id: toastId });
+    }
+  }
+
+  async function exportPDF() {
+    const toastId = toast.loading("Generating PDF...");
+    try {
+      const response = await fetch(`/api/meetings/${id}/export?format=pdf`);
+      if (!response.ok) throw new Error("Export failed");
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${meeting?.title || "meeting"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("PDF downloaded successfully", { id: toastId });
+    } catch {
+      toast.error("Failed to export PDF", { id: toastId });
     }
   }
 
@@ -617,7 +642,7 @@ export default function MeetingDetailPage({
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="mt-4 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50"
+                    className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -751,6 +776,10 @@ export default function MeetingDetailPage({
             )}
             {isCompleted && (
               <>
+                <Button variant="outline" onClick={exportPDF}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  PDF
+                </Button>
                 <Button variant="outline" onClick={exportMarkdown}>
                   <Download className="mr-2 h-4 w-4" />
                   Markdown

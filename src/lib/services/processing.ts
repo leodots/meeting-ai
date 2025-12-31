@@ -2,8 +2,10 @@ import { prisma } from "@/lib/db/prisma";
 import { ProcessingStatus } from "@prisma/client";
 import { transcribeAudio, getSpeakerColor } from "./transcription";
 import { analyzeMeeting } from "./gemini";
+import { log } from "@/lib/logger";
 
 export async function processMeeting(meetingId: string): Promise<void> {
+  const startTime = Date.now();
   const meeting = await prisma.meeting.findUnique({
     where: { id: meetingId },
   });
@@ -19,7 +21,8 @@ export async function processMeeting(meetingId: string): Promise<void> {
       data: { status: ProcessingStatus.TRANSCRIBING, processingError: null },
     });
 
-    console.log(`[Processing] Starting transcription for meeting ${meetingId}`);
+    log.processingStart(meetingId, meeting.title);
+    log.transcriptionStart(meetingId);
 
     // Transcribe audio (AssemblyAI with automatic language detection)
     const transcriptionResult = await transcribeAudio(meeting.storagePath);
@@ -30,7 +33,12 @@ export async function processMeeting(meetingId: string): Promise<void> {
       data: { status: ProcessingStatus.ANALYZING },
     });
 
-    console.log(`[Processing] Starting AI analysis for meeting ${meetingId}`);
+    log.transcriptionComplete(
+      meetingId,
+      transcriptionResult.utterances.length,
+      transcriptionResult.speakers.length
+    );
+    log.analysisStart(meetingId);
 
     // Analyze with Gemini (using detected language and custom instructions if provided)
     const analysisResult = await analyzeMeeting(
@@ -39,7 +47,12 @@ export async function processMeeting(meetingId: string): Promise<void> {
       meeting.aiInstructions
     );
 
-    console.log(`[Processing] Saving results for meeting ${meetingId}`);
+    log.analysisComplete(
+      meetingId,
+      analysisResult.topics.length,
+      analysisResult.actionItems.length
+    );
+    log.debug("Saving results to database", { meetingId });
 
     // Save everything in a single transaction
     await prisma.$transaction(async (tx) => {
@@ -119,9 +132,9 @@ export async function processMeeting(meetingId: string): Promise<void> {
       });
     });
 
-    console.log(`[Processing] Meeting ${meetingId} completed successfully`);
+    log.processingComplete(meetingId, meeting.title, Date.now() - startTime);
   } catch (error) {
-    console.error(`[Processing] Failed for meeting ${meetingId}:`, error);
+    log.processingError(meetingId, error instanceof Error ? error : String(error));
 
     // Update status to failed
     await prisma.meeting.update({

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "../../../../../../auth";
 import { prisma } from "@/lib/db/prisma";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { log } from "@/lib/logger";
 
 interface Speaker {
   speakerIndex: number;
@@ -175,13 +177,14 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = await params;
     const { searchParams } = new URL(request.url);
     const format = searchParams.get("format") || "md";
 
@@ -259,6 +262,7 @@ export async function GET(
     });
 
     if (format === "md") {
+      log.exportGenerated(id, "markdown");
       const filename = `${meeting.title.replace(/[^a-z0-9]/gi, "_")}.md`;
       return new NextResponse(markdown, {
         headers: {
@@ -268,8 +272,8 @@ export async function GET(
       });
     }
 
-    // For PDF, return HTML that can be printed/converted
     if (format === "html") {
+      log.exportGenerated(id, "html");
       const html = generateHTML(meeting.title, markdown);
       const filename = `${meeting.title.replace(/[^a-z0-9]/gi, "_")}.html`;
       return new NextResponse(html, {
@@ -280,14 +284,225 @@ export async function GET(
       });
     }
 
-    return NextResponse.json({ error: "Invalid format" }, { status: 400 });
+    if (format === "pdf") {
+      const pdfBuffer = await generatePDF({
+        title: meeting.title,
+        description: meeting.description,
+        duration: meeting.duration,
+        uploadedAt: meeting.uploadedAt,
+        processedAt: meeting.processedAt,
+        speakers: meeting.speakers.map((s) => ({
+          speakerIndex: s.speakerIndex,
+          label: s.label,
+        })),
+        transcript: transcriptData,
+        analysis: analysisData,
+      });
+
+      log.exportGenerated(id, "pdf");
+      const filename = `${meeting.title.replace(/[^a-z0-9]/gi, "_")}.pdf`;
+      return new NextResponse(Buffer.from(pdfBuffer), {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+        },
+      });
+    }
+
+    return NextResponse.json({ error: "Invalid format. Use: md, html, or pdf" }, { status: 400 });
   } catch (error) {
-    console.error("Export error:", error);
+    log.error("Export failed", error, { meetingId: id });
     return NextResponse.json(
       { error: "Failed to export meeting" },
       { status: 500 }
     );
   }
+}
+
+async function generatePDF(meeting: {
+  title: string;
+  description: string | null;
+  duration: number | null;
+  uploadedAt: Date;
+  processedAt: Date | null;
+  speakers: Speaker[];
+  transcript: {
+    utterances: Utterance[];
+  } | null;
+  analysis: {
+    summary: string;
+    topics: Topic[];
+    keyPoints: KeyPoint[];
+    actionItems: ActionItem[];
+    meetingDocument?: string | null;
+  } | null;
+}): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  const pageWidth = 595.28; // A4
+  const pageHeight = 841.89;
+  const margin = 50;
+  const contentWidth = pageWidth - margin * 2;
+
+  let page = pdfDoc.addPage([pageWidth, pageHeight]);
+  let y = pageHeight - margin;
+
+  const colors = {
+    primary: rgb(0.09, 0.09, 0.11),
+    secondary: rgb(0.44, 0.44, 0.48),
+    accent: rgb(0.23, 0.51, 0.96),
+  };
+
+  // Helper to add new page if needed
+  const checkNewPage = (needed: number) => {
+    if (y - needed < margin) {
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      y = pageHeight - margin;
+    }
+  };
+
+  // Helper to draw wrapped text
+  const drawText = (text: string, font: typeof helvetica, size: number, color: typeof colors.primary, maxWidth: number = contentWidth) => {
+    const words = text.split(" ");
+    let line = "";
+    const lineHeight = size * 1.4;
+
+    for (const word of words) {
+      const testLine = line + (line ? " " : "") + word;
+      const testWidth = font.widthOfTextAtSize(testLine, size);
+
+      if (testWidth > maxWidth && line) {
+        checkNewPage(lineHeight);
+        page.drawText(line, { x: margin, y, size, font, color });
+        y -= lineHeight;
+        line = word;
+      } else {
+        line = testLine;
+      }
+    }
+
+    if (line) {
+      checkNewPage(lineHeight);
+      page.drawText(line, { x: margin, y, size, font, color });
+      y -= lineHeight;
+    }
+  };
+
+  // Title
+  drawText(meeting.title, helveticaBold, 22, colors.primary);
+  y -= 5;
+
+  // Description
+  if (meeting.description) {
+    drawText(meeting.description, helvetica, 11, colors.secondary);
+  }
+  y -= 15;
+
+  // Meeting Info
+  drawText("Meeting Info", helveticaBold, 14, colors.primary);
+  y -= 5;
+
+  const dateStr = meeting.uploadedAt.toLocaleDateString("en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric"
+  });
+  drawText(`Date: ${dateStr}`, helvetica, 10, colors.secondary);
+
+  if (meeting.duration) {
+    drawText(`Duration: ${formatDuration(meeting.duration)}`, helvetica, 10, colors.secondary);
+  }
+
+  if (meeting.speakers.length > 0) {
+    drawText(`Participants: ${meeting.speakers.map(getSpeakerName).join(", ")}`, helvetica, 10, colors.secondary);
+  }
+
+  // Analysis
+  if (meeting.analysis) {
+    y -= 20;
+    drawText("Summary", helveticaBold, 14, colors.primary);
+    y -= 5;
+    drawText(meeting.analysis.summary, helvetica, 10, colors.secondary);
+
+    // Topics
+    if (meeting.analysis.topics.length > 0) {
+      y -= 20;
+      drawText("Topics Discussed", helveticaBold, 14, colors.primary);
+      y -= 5;
+      for (const topic of meeting.analysis.topics) {
+        const stars = "[" + "*".repeat(topic.importance) + "-".repeat(5 - topic.importance) + "]";
+        drawText(`- ${topic.title} ${stars}`, helveticaBold, 10, colors.primary);
+        drawText(`  ${topic.description}`, helvetica, 9, colors.secondary);
+        y -= 5;
+      }
+    }
+
+    // Key Points
+    if (meeting.analysis.keyPoints.length > 0) {
+      y -= 15;
+      drawText("Key Points", helveticaBold, 14, colors.primary);
+      y -= 5;
+      for (const point of meeting.analysis.keyPoints) {
+        drawText(`- ${point.point}`, helveticaBold, 10, colors.primary);
+        if (point.context) {
+          drawText(`  ${point.context}`, helvetica, 9, colors.secondary);
+        }
+        y -= 3;
+      }
+    }
+
+    // Action Items
+    if (meeting.analysis.actionItems.length > 0) {
+      y -= 15;
+      drawText("Action Items", helveticaBold, 14, colors.primary);
+      y -= 5;
+      for (const item of meeting.analysis.actionItems) {
+        const priority = item.priority ? `[${item.priority.toUpperCase()}]` : "";
+        const assignee = item.assignee ? ` (${item.assignee})` : "";
+        drawText(`[ ] ${priority} ${item.item}${assignee}`, helvetica, 10, colors.primary);
+        y -= 3;
+      }
+    }
+
+    // Meeting Document
+    if (meeting.analysis.meetingDocument) {
+      y -= 20;
+      drawText("Meeting Document", helveticaBold, 14, colors.primary);
+      y -= 5;
+      drawText(meeting.analysis.meetingDocument, helvetica, 10, colors.secondary);
+    }
+  }
+
+  // Transcript on new page
+  if (meeting.transcript && meeting.transcript.utterances.length > 0) {
+    page = pdfDoc.addPage([pageWidth, pageHeight]);
+    y = pageHeight - margin;
+
+    drawText("Full Transcript", helveticaBold, 14, colors.primary);
+    y -= 10;
+
+    for (const utterance of meeting.transcript.utterances) {
+      const speaker = getSpeakerName(utterance.speaker);
+      const timestamp = formatTimestamp(utterance.startTime);
+
+      checkNewPage(40);
+      drawText(`[${timestamp}] ${speaker}:`, helveticaBold, 9, colors.accent);
+      drawText(utterance.text, helvetica, 10, colors.secondary);
+      y -= 8;
+    }
+  }
+
+  // Footer on last page
+  y = margin;
+  page.drawText(`Generated by Meeting AI on ${new Date().toLocaleDateString()}`, {
+    x: margin,
+    y,
+    size: 8,
+    font: helvetica,
+    color: colors.secondary,
+  });
+
+  return await pdfDoc.save();
 }
 
 function generateHTML(title: string, markdown: string): string {

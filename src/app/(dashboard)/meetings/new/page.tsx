@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageContainer } from "@/components/layout";
 import { ProjectSelector, TagSelector } from "@/components/organization";
 import { cn } from "@/lib/utils";
+import { refreshProjects } from "@/lib/hooks/use-projects";
 
 interface Project {
   id: string;
@@ -226,6 +227,11 @@ export default function NewMeetingPage() {
 
       if (!processResponse.ok) {
         console.warn("Failed to start processing automatically");
+      }
+
+      // Refresh sidebar counts if project was selected
+      if (selectedProject) {
+        await refreshProjects();
       }
 
       // Redirect to the meeting page
