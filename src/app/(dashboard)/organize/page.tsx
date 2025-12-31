@@ -90,13 +90,16 @@ function ProjectCard({
   onEdit,
   onDelete,
   onClick,
+  isMenuOpen,
+  onMenuToggle,
 }: {
   project: Project;
   onEdit: (project: Project) => void;
   onDelete: (project: Project) => void;
   onClick: (project: Project) => void;
+  isMenuOpen: boolean;
+  onMenuToggle: (id: string | null) => void;
 }) {
-  const [showMenu, setShowMenu] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   const meetingCount = project._count?.meetings || 0;
@@ -144,44 +147,65 @@ function ProjectCard({
         </div>
       </div>
 
-      {/* Arrow indicator */}
+      {/* Arrow indicator - hidden on mobile */}
       <motion.div
         initial={{ opacity: 0, x: -5 }}
         animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : -5 }}
-        className="mr-8 text-zinc-400"
+        className="mr-8 hidden text-zinc-400 sm:block"
       >
         <ArrowRight className="h-4 w-4" />
       </motion.div>
 
-      {/* Menu button */}
-      <div className="relative" onClick={(e) => e.stopPropagation()}>
+      {/* Menu button - always visible on mobile, hover on desktop */}
+      <div
+        className="relative"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
-          onClick={() => setShowMenu(!showMenu)}
+          className="h-8 w-8 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onMenuToggle(isMenuOpen ? null : `project-${project.id}`);
+          }}
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
         <AnimatePresence>
-          {showMenu && (
+          {isMenuOpen && (
             <>
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-10"
-                onClick={() => setShowMenu(false)}
+                className="fixed inset-0 z-40"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onMenuToggle(null);
+                }}
               />
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                initial={{ opacity: 0, scale: 0.95, y: 5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -5 }}
-                className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                className="absolute bottom-full right-0 z-50 mb-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
               >
                 <button
-                  onClick={() => {
-                    setShowMenu(false);
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onMenuToggle(null);
                     onEdit(project);
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
@@ -190,8 +214,11 @@ function ProjectCard({
                   Edit
                 </button>
                 <button
-                  onClick={() => {
-                    setShowMenu(false);
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onMenuToggle(null);
                     onDelete(project);
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
@@ -213,13 +240,16 @@ function TagCard({
   onEdit,
   onDelete,
   onClick,
+  isMenuOpen,
+  onMenuToggle,
 }: {
   tag: Tag;
   onEdit: (tag: Tag) => void;
   onDelete: (tag: Tag) => void;
   onClick: (tag: Tag) => void;
+  isMenuOpen: boolean;
+  onMenuToggle: (id: string | null) => void;
 }) {
-  const [showMenu, setShowMenu] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   const meetingCount = tag._count?.meetings || 0;
@@ -237,23 +267,23 @@ function TagCard({
       onClick={() => onClick(tag)}
       className="group relative flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
     >
-      {/* Colored dot with pulse effect on hover */}
+      {/* Colored dot with pulse effect when menu is open */}
       <motion.div
         className="relative shrink-0"
-        animate={{ scale: isHovered ? 1.2 : 1 }}
+        animate={{ scale: isMenuOpen ? 1.2 : 1 }}
         transition={{ duration: 0.2 }}
       >
         <span
           className="block h-4 w-4 rounded-full"
           style={{ backgroundColor: tag.color }}
         />
-        {isHovered && (
+        {isMenuOpen && (
           <motion.span
             className="absolute inset-0 rounded-full"
             style={{ backgroundColor: tag.color }}
             initial={{ scale: 1, opacity: 0.5 }}
             animate={{ scale: 2, opacity: 0 }}
-            transition={{ duration: 0.6, repeat: Infinity }}
+            transition={{ duration: 0.6, repeat: 2 }}
           />
         )}
       </motion.div>
@@ -267,44 +297,65 @@ function TagCard({
         </p>
       </div>
 
-      {/* Arrow indicator */}
+      {/* Arrow indicator - hidden on mobile */}
       <motion.div
         initial={{ opacity: 0, x: -5 }}
         animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : -5 }}
-        className="mr-6 text-zinc-400"
+        className="mr-6 hidden text-zinc-400 sm:block"
       >
         <ArrowRight className="h-4 w-4" />
       </motion.div>
 
-      {/* Menu button */}
-      <div className="relative" onClick={(e) => e.stopPropagation()}>
+      {/* Menu button - always visible on mobile, hover on desktop */}
+      <div
+        className="relative"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-          onClick={() => setShowMenu(!showMenu)}
+          className="h-7 w-7 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onMenuToggle(isMenuOpen ? null : `tag-${tag.id}`);
+          }}
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
         <AnimatePresence>
-          {showMenu && (
+          {isMenuOpen && (
             <>
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-10"
-                onClick={() => setShowMenu(false)}
+                className="fixed inset-0 z-40"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onMenuToggle(null);
+                }}
               />
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                initial={{ opacity: 0, scale: 0.95, y: 5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -5 }}
-                className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                className="absolute bottom-full right-0 z-50 mb-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
               >
                 <button
-                  onClick={() => {
-                    setShowMenu(false);
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onMenuToggle(null);
                     onEdit(tag);
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
@@ -313,8 +364,11 @@ function TagCard({
                   Edit
                 </button>
                 <button
-                  onClick={() => {
-                    setShowMenu(false);
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onMenuToggle(null);
                     onDelete(tag);
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
@@ -337,6 +391,9 @@ export default function OrganizePage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [isLoadingTags, setIsLoadingTags] = useState(true);
+
+  // Global menu state - only one menu open at a time
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Form states
   const [showProjectForm, setShowProjectForm] = useState(false);
@@ -676,6 +733,8 @@ export default function OrganizePage() {
                         onEdit={handleEditProject}
                         onDelete={openDeleteProjectDialog}
                         onClick={handleProjectClick}
+                        isMenuOpen={openMenuId === `project-${project.id}`}
+                        onMenuToggle={setOpenMenuId}
                       />
                     ))}
                   </AnimatePresence>
@@ -788,6 +847,8 @@ export default function OrganizePage() {
                         onEdit={handleEditTag}
                         onDelete={openDeleteTagDialog}
                         onClick={handleTagClick}
+                        isMenuOpen={openMenuId === `tag-${tag.id}`}
+                        onMenuToggle={setOpenMenuId}
                       />
                     ))}
                   </AnimatePresence>
