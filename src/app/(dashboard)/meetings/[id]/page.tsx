@@ -34,6 +34,7 @@ import { PageContainer } from "@/components/layout";
 import { ProjectSelector, TagSelector } from "@/components/organization";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { CopyButton } from "@/components/ui/copy-button";
+import { DynamicIcon } from "@/components/ui/icon-picker";
 import { SkeletonMeetingDetail } from "@/components/ui/skeleton";
 import { SIDEBAR_REFRESH_EVENT } from "@/components/layout/sidebar";
 import { cn } from "@/lib/utils";
@@ -715,7 +716,7 @@ export default function MeetingDetailPage({
                           className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                         >
                           {meeting.project.icon ? (
-                            <span>{meeting.project.icon}</span>
+                            <DynamicIcon name={meeting.project.icon} className="h-3.5 w-3.5" style={{ color: meeting.project.color }} />
                           ) : (
                             <Folder className="h-3.5 w-3.5" style={{ color: meeting.project.color }} />
                           )}
