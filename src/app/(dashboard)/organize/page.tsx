@@ -183,7 +183,8 @@ function ProjectCard({
                 className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
               >
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onMenuToggle(null);
                     onEdit(project);
                   }}
@@ -193,7 +194,8 @@ function ProjectCard({
                   Edit
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onMenuToggle(null);
                     onDelete(project);
                   }}
@@ -243,17 +245,17 @@ function TagCard({
       onClick={() => onClick(tag)}
       className="group relative flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
     >
-      {/* Colored dot with pulse effect on hover - limited to 3 pulses */}
+      {/* Colored dot with pulse effect when menu is open */}
       <motion.div
         className="relative shrink-0"
-        animate={{ scale: isHovered ? 1.2 : 1 }}
+        animate={{ scale: isMenuOpen ? 1.2 : 1 }}
         transition={{ duration: 0.2 }}
       >
         <span
           className="block h-4 w-4 rounded-full"
           style={{ backgroundColor: tag.color }}
         />
-        {isHovered && (
+        {isMenuOpen && (
           <motion.span
             className="absolute inset-0 rounded-full"
             style={{ backgroundColor: tag.color }}
@@ -309,7 +311,8 @@ function TagCard({
                 className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
               >
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onMenuToggle(null);
                     onEdit(tag);
                   }}
@@ -319,7 +322,8 @@ function TagCard({
                   Edit
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onMenuToggle(null);
                     onDelete(tag);
                   }}
