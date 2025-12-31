@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageContainer } from "@/components/layout";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { formatDuration } from "@/lib/utils/format";
+import { statusConfig } from "@/lib/config/status";
 
 interface Stats {
   totalMeetings: number;
@@ -29,35 +31,6 @@ interface RecentMeeting {
   status: string;
   duration: number | null;
   uploadedAt: string;
-}
-
-const statusConfig: Record<string, { label: string; className: string }> = {
-  PENDING: {
-    label: "Pending",
-    className: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-  },
-  TRANSCRIBING: {
-    label: "Transcribing",
-    className: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  },
-  ANALYZING: {
-    label: "Analyzing",
-    className: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  },
-  COMPLETED: {
-    label: "Completed",
-    className: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  },
-  FAILED: {
-    label: "Failed",
-    className: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-  },
-};
-
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 export default function DashboardPage() {
@@ -184,44 +157,55 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {recentMeetings.map((meeting) => (
-                    <Link
+                  {recentMeetings.map((meeting, index) => (
+                    <motion.div
                       key={meeting.id}
-                      href={`/meetings/${meeting.id}`}
-                      className="flex items-center gap-4 rounded-lg p-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                      layout
+                      layoutId={`dashboard-meeting-${meeting.id}`}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{
+                        delay: index * 0.05,
+                        layout: { type: "spring", stiffness: 350, damping: 30 }
+                      }}
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                        <Mic className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">
-                            {meeting.title}
-                          </p>
-                          <span
-                            className={cn(
-                              "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
-                              statusConfig[meeting.status]?.className ||
-                                statusConfig.PENDING.className
-                            )}
-                          >
-                            {statusConfig[meeting.status]?.label || meeting.status}
-                          </span>
+                      <Link
+                        href={`/meetings/${meeting.id}`}
+                        className="flex items-center gap-4 rounded-lg p-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                      >
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                          <Mic className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(meeting.uploadedAt).toLocaleDateString()}
-                          </span>
-                          {meeting.duration && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {formatDuration(meeting.duration)}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">
+                              {meeting.title}
+                            </p>
+                            <span
+                              className={cn(
+                                "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+                                statusConfig[meeting.status]?.className ||
+                                  statusConfig.PENDING.className
+                              )}
+                            >
+                              {statusConfig[meeting.status]?.label || meeting.status}
                             </span>
-                          )}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(meeting.uploadedAt).toLocaleDateString()}
+                            </span>
+                            {meeting.duration && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formatDuration(meeting.duration)}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </Link>
+                      </Link>
+                    </motion.div>
                   ))}
                 </div>
               </CardContent>

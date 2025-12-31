@@ -22,6 +22,8 @@ import { PageContainer } from "@/components/layout";
 import { TagBadge } from "@/components/organization";
 import { SkeletonMeetingList } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { formatDuration } from "@/lib/utils/format";
+import { statusConfig } from "@/lib/config/status";
 import { toast } from "sonner";
 
 interface Project {
@@ -62,35 +64,6 @@ interface MeetingsResponse {
     totalPages: number;
   };
 }
-
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
-const statusConfig = {
-  PENDING: {
-    label: "Pending",
-    className: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
-  },
-  TRANSCRIBING: {
-    label: "Transcribing",
-    className: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  },
-  ANALYZING: {
-    label: "Analyzing",
-    className: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  },
-  COMPLETED: {
-    label: "Completed",
-    className: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  },
-  FAILED: {
-    label: "Failed",
-    className: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-  },
-};
 
 export default function MeetingsPage() {
   const router = useRouter();
@@ -194,10 +167,19 @@ export default function MeetingsPage() {
     e.preventDefault();
     e.stopPropagation();
 
-    // Optimistically update UI
+    // Helper to sort meetings: favorites first, then by date
+    const sortMeetings = (meetings: Meeting[]) =>
+      [...meetings].sort((a, b) => {
+        if (a.favorite !== b.favorite) return b.favorite ? 1 : -1;
+        return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+      });
+
+    // Optimistically update UI and reorder
     setMeetings((prev) =>
-      prev.map((m) =>
-        m.id === meetingId ? { ...m, favorite: !currentFavorite } : m
+      sortMeetings(
+        prev.map((m) =>
+          m.id === meetingId ? { ...m, favorite: !currentFavorite } : m
+        )
       )
     );
 
@@ -214,10 +196,12 @@ export default function MeetingsPage() {
 
       toast.success(currentFavorite ? "Removed from favorites" : "Added to favorites");
     } catch {
-      // Revert on error
+      // Revert on error and reorder back
       setMeetings((prev) =>
-        prev.map((m) =>
-          m.id === meetingId ? { ...m, favorite: currentFavorite } : m
+        sortMeetings(
+          prev.map((m) =>
+            m.id === meetingId ? { ...m, favorite: currentFavorite } : m
+          )
         )
       );
       toast.error("Failed to update favorite");
@@ -387,19 +371,28 @@ export default function MeetingsPage() {
 
         {/* Error State */}
         {error && !loading && (
-          <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
-            <CardContent className="py-4">
-              <p className="text-red-600 dark:text-red-400">{error}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={fetchMeetings}
-              >
-                Try again
-              </Button>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: [0, -5, 5, -5, 0] }}
+            transition={{
+              opacity: { duration: 0.3 },
+              x: { duration: 0.4, delay: 0.1 }
+            }}
+          >
+            <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
+              <CardContent className="py-4">
+                <p className="text-red-600 dark:text-red-400">{error}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={fetchMeetings}
+                >
+                  Try again
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
 
         {/* Meetings Grid */}
@@ -408,9 +401,14 @@ export default function MeetingsPage() {
             {filteredMeetings.map((meeting, index) => (
               <motion.div
                 key={meeting.id}
+                layout
+                layoutId={meeting.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
+                transition={{
+                  delay: index * 0.03,
+                  layout: { type: "spring", stiffness: 350, damping: 30 }
+                }}
               >
                 <Link href={`/meetings/${meeting.id}`}>
                   <Card className="h-full transition-all hover:bg-zinc-50 hover:shadow-md dark:hover:bg-zinc-900">

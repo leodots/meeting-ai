@@ -1,4 +1,5 @@
 import useSWR, { mutate } from "swr";
+import { fetcher } from "@/lib/api/fetcher";
 
 interface Tag {
   id: string;
@@ -6,8 +7,6 @@ interface Tag {
   color: string;
   _count?: { meetings: number };
 }
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const TAGS_KEY = "/api/tags";
 

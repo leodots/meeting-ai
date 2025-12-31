@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -29,6 +30,7 @@ import {
 import { PageContainer } from "@/components/layout";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { COLORS } from "@/lib/config/colors";
 import { toast } from "sonner";
 import { refreshProjects } from "@/lib/hooks/use-projects";
 import { refreshTags } from "@/lib/hooks/use-tags";
@@ -47,18 +49,6 @@ interface Tag {
   color: string;
   _count?: { meetings: number };
 }
-
-const COLORS = [
-  "#ef4444", // red
-  "#f97316", // orange
-  "#eab308", // yellow
-  "#22c55e", // green
-  "#14b8a6", // teal
-  "#3b82f6", // blue
-  "#8b5cf6", // violet
-  "#ec4899", // pink
-  "#71717a", // gray
-];
 
 function ColorPicker({
   value,
@@ -110,8 +100,6 @@ function ProjectCard({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       onClick={() => onClick(project)}
@@ -176,58 +164,59 @@ function ProjectCard({
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
+        {isMenuOpen && typeof document !== "undefined" && createPortal(
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onMenuToggle(null);
+            }}
+          />,
+          document.body
+        )}
         <AnimatePresence>
           {isMenuOpen && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-40"
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 5 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 5 }}
+              className="absolute bottom-full right-0 z-50 mb-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   onMenuToggle(null);
+                  onEdit(project);
                 }}
-              />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 5 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                className="absolute bottom-full right-0 z-50 mb-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                <Edit2 className="h-4 w-4" />
+                Edit
+              </button>
+              <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  onMenuToggle(null);
+                  onDelete(project);
                 }}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
               >
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onMenuToggle(null);
-                    onEdit(project);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                >
-                  <Edit2 className="h-4 w-4" />
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onMenuToggle(null);
-                    onDelete(project);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </button>
-              </motion.div>
-            </>
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
@@ -260,8 +249,6 @@ function TagCard({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
       onClick={() => onClick(tag)}
@@ -326,58 +313,59 @@ function TagCard({
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
+        {isMenuOpen && typeof document !== "undefined" && createPortal(
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onMenuToggle(null);
+            }}
+          />,
+          document.body
+        )}
         <AnimatePresence>
           {isMenuOpen && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-40"
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 5 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 5 }}
+              className="absolute bottom-full right-0 z-50 mb-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   onMenuToggle(null);
+                  onEdit(tag);
                 }}
-              />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 5 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                className="absolute bottom-full right-0 z-50 mb-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                <Edit2 className="h-4 w-4" />
+                Edit
+              </button>
+              <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  onMenuToggle(null);
+                  onDelete(tag);
                 }}
+                className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
               >
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onMenuToggle(null);
-                    onEdit(tag);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                >
-                  <Edit2 className="h-4 w-4" />
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onMenuToggle(null);
-                    onDelete(tag);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </button>
-              </motion.div>
-            </>
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
@@ -717,12 +705,17 @@ export default function OrganizePage() {
                   <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
                 </div>
               ) : projects.length === 0 ? (
-                <div className="py-8 text-center">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="py-8 text-center"
+                >
                   <Folder className="mx-auto h-10 w-10 text-zinc-300 dark:text-zinc-700" />
                   <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
                     No projects yet. Create one to get started.
                   </p>
-                </div>
+                </motion.div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <AnimatePresence mode="popLayout">
@@ -831,12 +824,17 @@ export default function OrganizePage() {
                   <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
                 </div>
               ) : tags.length === 0 ? (
-                <div className="py-8 text-center">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="py-8 text-center"
+                >
                   <TagIcon className="mx-auto h-10 w-10 text-zinc-300 dark:text-zinc-700" />
                   <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
                     No tags yet. Create one to get started.
                   </p>
-                </div>
+                </motion.div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <AnimatePresence mode="popLayout">

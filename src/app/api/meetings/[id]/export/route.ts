@@ -3,6 +3,7 @@ import { auth } from "../../../../../../auth";
 import { prisma } from "@/lib/db/prisma";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { log } from "@/lib/logger";
+import { formatTimestamp, formatDurationLong } from "@/lib/utils/format";
 
 interface Speaker {
   speakerIndex: number;
@@ -30,22 +31,6 @@ interface ActionItem {
   item: string;
   assignee?: string;
   priority?: string;
-}
-
-function formatTimestamp(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  if (hours > 0) {
-    return `${hours}h ${mins}m ${secs}s`;
-  }
-  return `${mins}m ${secs}s`;
 }
 
 function getSpeakerName(speaker: Speaker): string {
@@ -86,7 +71,7 @@ function generateMarkdown(meeting: {
   lines.push("");
   lines.push(`- **Date:** ${meeting.uploadedAt.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}`);
   if (meeting.duration) {
-    lines.push(`- **Duration:** ${formatDuration(meeting.duration)}`);
+    lines.push(`- **Duration:** ${formatDurationLong(meeting.duration)}`);
   }
   if (meeting.speakers.length > 0) {
     lines.push(`- **Participants:** ${meeting.speakers.map(getSpeakerName).join(", ")}`);
@@ -410,7 +395,7 @@ async function generatePDF(meeting: {
   drawText(`Date: ${dateStr}`, helvetica, 10, colors.secondary);
 
   if (meeting.duration) {
-    drawText(`Duration: ${formatDuration(meeting.duration)}`, helvetica, 10, colors.secondary);
+    drawText(`Duration: ${formatDurationLong(meeting.duration)}`, helvetica, 10, colors.secondary);
   }
 
   if (meeting.speakers.length > 0) {

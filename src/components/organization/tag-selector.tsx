@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Check, Plus, Tag as TagIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { COLORS } from "@/lib/config/colors";
+import { useClickOutside } from "@/lib/hooks/use-click-outside";
 import { TagBadge } from "./tag-badge";
 
 interface Tag {
@@ -21,18 +23,6 @@ interface TagSelectorProps {
   className?: string;
 }
 
-const TAG_COLORS = [
-  "#ef4444", // red
-  "#f97316", // orange
-  "#eab308", // yellow
-  "#22c55e", // green
-  "#14b8a6", // teal
-  "#3b82f6", // blue
-  "#8b5cf6", // violet
-  "#ec4899", // pink
-  "#71717a", // gray
-];
-
 export function TagSelector({
   availableTags,
   selectedTags,
@@ -48,16 +38,13 @@ export function TagSelector({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Close on click outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setSearch("");
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  useClickOutside(
+    containerRef,
+    useCallback(() => {
+      setIsOpen(false);
+      setSearch("");
+    }, [])
+  );
 
   const filteredTags = availableTags.filter(
     (tag) =>
@@ -86,7 +73,7 @@ export function TagSelector({
     if (!onCreateTag || !search.trim()) return;
     setIsCreating(true);
     try {
-      const randomColor = TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
+      const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
       const newTag = await onCreateTag(search.trim());
       if (newTag) {
         handleSelect(newTag);
@@ -157,10 +144,13 @@ export function TagSelector({
             transition={{ duration: 0.15 }}
             className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[200px] overflow-auto rounded-lg border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-950"
           >
-            {filteredTags.map((tag) => (
-              <button
+            {filteredTags.map((tag, index) => (
+              <motion.button
                 type="button"
                 key={tag.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.03, duration: 0.15 }}
                 onClick={() => handleSelect(tag)}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900"
               >
@@ -171,7 +161,7 @@ export function TagSelector({
                 <span className="flex-1 text-zinc-700 dark:text-zinc-300">
                   {tag.name}
                 </span>
-              </button>
+              </motion.button>
             ))}
 
             {canCreateNew && (

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Check, ChevronDown, Folder, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { COLORS } from "@/lib/config/colors";
+import { useClickOutside } from "@/lib/hooks/use-click-outside";
 import { DynamicIcon } from "@/components/ui/icon-picker";
 
 interface Project {
@@ -22,17 +24,6 @@ interface ProjectSelectorProps {
   className?: string;
 }
 
-const PROJECT_COLORS = [
-  "#ef4444", // red
-  "#f97316", // orange
-  "#eab308", // yellow
-  "#22c55e", // green
-  "#14b8a6", // teal
-  "#3b82f6", // blue
-  "#8b5cf6", // violet
-  "#ec4899", // pink
-];
-
 export function ProjectSelector({
   projects,
   selectedProject,
@@ -48,16 +39,13 @@ export function ProjectSelector({
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Close on click outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setSearch("");
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  useClickOutside(
+    containerRef,
+    useCallback(() => {
+      setIsOpen(false);
+      setSearch("");
+    }, [])
+  );
 
   const filteredProjects = projects.filter((project) =>
     project.name.toLowerCase().includes(search.toLowerCase())
@@ -190,10 +178,13 @@ export function ProjectSelector({
                 </button>
               )}
 
-              {filteredProjects.map((project) => (
-                <button
+              {filteredProjects.map((project, index) => (
+                <motion.button
                   type="button"
                   key={project.id}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.03, duration: 0.15 }}
                   onClick={() => handleSelect(project)}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900"
                 >
@@ -212,7 +203,7 @@ export function ProjectSelector({
                   {selectedProject?.id === project.id && (
                     <Check className="h-4 w-4 text-zinc-900 dark:text-zinc-100" />
                   )}
-                </button>
+                </motion.button>
               ))}
 
               {canCreateNew && (

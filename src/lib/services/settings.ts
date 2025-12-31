@@ -82,7 +82,3 @@ export async function getAllApiKeys(): Promise<ApiKeyInfo[]> {
   });
 }
 
-export async function getApiKeyForDisplay(key: ApiKeyType): Promise<string | null> {
-  const apiKey = await getApiKey(key);
-  return apiKey ? maskApiKey(apiKey) : null;
-}

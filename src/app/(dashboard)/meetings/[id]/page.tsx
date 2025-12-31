@@ -20,7 +20,6 @@ import {
   MessageSquare,
   Pencil,
   Play,
-  Printer,
   Star,
   Trash2,
   Users,
@@ -36,8 +35,8 @@ import { AlertDialog } from "@/components/ui/alert-dialog";
 import { CopyButton } from "@/components/ui/copy-button";
 import { DynamicIcon } from "@/components/ui/icon-picker";
 import { SkeletonMeetingDetail } from "@/components/ui/skeleton";
-import { SIDEBAR_REFRESH_EVENT } from "@/components/layout/sidebar";
 import { cn } from "@/lib/utils";
+import { formatDuration, formatTimestamp } from "@/lib/utils/format";
 import { toast } from "sonner";
 import { refreshProjects } from "@/lib/hooks/use-projects";
 
@@ -116,18 +115,6 @@ interface Meeting {
   tags: { tag: Tag }[];
 }
 
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
-function formatTimestamp(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
 export default function MeetingDetailPage({
   params,
 }: {
@@ -144,6 +131,7 @@ export default function MeetingDetailPage({
   const [processing, setProcessing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Organization editing state
   const [isEditingOrganization, setIsEditingOrganization] = useState(false);
@@ -447,66 +435,29 @@ export default function MeetingDetailPage({
     }
   }
 
-  async function exportMarkdown() {
-    const toastId = toast.loading("Generating Markdown...");
+  async function handleExport(format: "pdf" | "md" | "html") {
+    const formatLabels = { pdf: "PDF", md: "Markdown", html: "HTML" };
+    const extensions = { pdf: "pdf", md: "md", html: "html" };
+
+    setShowExportMenu(false);
+    const toastId = toast.loading(`Generating ${formatLabels[format]}...`);
+
     try {
-      const response = await fetch(`/api/meetings/${id}/export?format=md`);
+      const response = await fetch(`/api/meetings/${id}/export?format=${format}`);
       if (!response.ok) throw new Error("Export failed");
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${meeting?.title || "meeting"}.md`;
+      a.download = `${meeting?.title || "meeting"}.${extensions[format]}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("Markdown downloaded successfully", { id: toastId });
+      toast.success(`${formatLabels[format]} downloaded`, { id: toastId });
     } catch {
-      toast.error("Failed to export Markdown", { id: toastId });
-    }
-  }
-
-  async function exportHTML() {
-    const toastId = toast.loading("Generating HTML...");
-    try {
-      const response = await fetch(`/api/meetings/${id}/export?format=html`);
-      if (!response.ok) throw new Error("Export failed");
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${meeting?.title || "meeting"}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("HTML downloaded successfully", { id: toastId });
-    } catch {
-      toast.error("Failed to export HTML", { id: toastId });
-    }
-  }
-
-  async function exportPDF() {
-    const toastId = toast.loading("Generating PDF...");
-    try {
-      const response = await fetch(`/api/meetings/${id}/export?format=pdf`);
-      if (!response.ok) throw new Error("Export failed");
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${meeting?.title || "meeting"}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("PDF downloaded successfully", { id: toastId });
-    } catch {
-      toast.error("Failed to export PDF", { id: toastId });
+      toast.error(`Failed to export ${formatLabels[format]}`, { id: toastId });
     }
   }
 
@@ -776,20 +727,59 @@ export default function MeetingDetailPage({
               </Button>
             )}
             {isCompleted && (
-              <>
-                <Button variant="outline" onClick={exportPDF}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  PDF
-                </Button>
-                <Button variant="outline" onClick={exportMarkdown}>
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                >
                   <Download className="mr-2 h-4 w-4" />
-                  Markdown
+                  Export
                 </Button>
-                <Button variant="outline" onClick={exportHTML}>
-                  <Printer className="mr-2 h-4 w-4" />
-                  HTML
-                </Button>
-              </>
+                <AnimatePresence>
+                  {showExportMenu && (
+                    <>
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-10"
+                        onClick={() => setShowExportMenu(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                        className="absolute right-0 top-full z-20 mt-1 w-40 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleExport("pdf")}
+                          className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                        >
+                          <FileText className="h-4 w-4" />
+                          PDF
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExport("md")}
+                          className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                        >
+                          <Download className="h-4 w-4" />
+                          Markdown
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExport("html")}
+                          className="flex w-full items-center gap-2 px-3 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                        >
+                          <FileText className="h-4 w-4" />
+                          HTML
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             )}
             <Button
               variant="outline"
@@ -895,8 +885,16 @@ export default function MeetingDetailPage({
         )}
 
         {/* Content */}
-        {isCompleted && activeTab === "overview" && meeting.analysis && (
-          <div className="grid gap-6 lg:grid-cols-2">
+        <AnimatePresence mode="wait">
+          {isCompleted && activeTab === "overview" && meeting.analysis && (
+            <motion.div
+              key="overview"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              transition={{ duration: 0.2 }}
+              className="grid gap-6 lg:grid-cols-2"
+            >
             {/* Summary */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1037,14 +1035,17 @@ export default function MeetingDetailPage({
                 </Card>
               </motion.div>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* Transcript Tab */}
         {isCompleted && activeTab === "transcript" && meeting.transcript && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            key="transcript"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.2 }}
           >
             <Card>
               <CardHeader>
@@ -1150,6 +1151,7 @@ export default function MeetingDetailPage({
             </Card>
           </motion.div>
         )}
+        </AnimatePresence>
 
         {/* Pending State */}
         {isPending && !isProcessing && (

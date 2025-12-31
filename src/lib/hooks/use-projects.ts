@@ -1,4 +1,5 @@
 import useSWR, { mutate } from "swr";
+import { fetcher } from "@/lib/api/fetcher";
 
 interface Project {
   id: string;
@@ -7,8 +8,6 @@ interface Project {
   icon?: string | null;
   _count?: { meetings: number };
 }
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const PROJECTS_KEY = "/api/projects";
 
