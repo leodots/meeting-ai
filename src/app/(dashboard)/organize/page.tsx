@@ -157,12 +157,22 @@ function ProjectCard({
       </motion.div>
 
       {/* Menu button - always visible on mobile, hover on desktop */}
-      <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="relative"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <Button
           variant="ghost"
           size="icon"
           className="h-8 w-8 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
-          onClick={() => onMenuToggle(isMenuOpen ? null : `project-${project.id}`)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onMenuToggle(isMenuOpen ? null : `project-${project.id}`);
+          }}
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
@@ -173,17 +183,27 @@ function ProjectCard({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-10"
-                onClick={() => onMenuToggle(null)}
+                className="fixed inset-0 z-40"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onMenuToggle(null);
+                }}
               />
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                initial={{ opacity: 0, scale: 0.95, y: 5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -5 }}
-                className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                className="absolute bottom-full right-0 z-50 mb-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
               >
                 <button
+                  type="button"
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     onMenuToggle(null);
                     onEdit(project);
@@ -194,7 +214,9 @@ function ProjectCard({
                   Edit
                 </button>
                 <button
+                  type="button"
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     onMenuToggle(null);
                     onDelete(project);
@@ -285,12 +307,22 @@ function TagCard({
       </motion.div>
 
       {/* Menu button - always visible on mobile, hover on desktop */}
-      <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="relative"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
         <Button
           variant="ghost"
           size="icon"
           className="h-7 w-7 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
-          onClick={() => onMenuToggle(isMenuOpen ? null : `tag-${tag.id}`)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onMenuToggle(isMenuOpen ? null : `tag-${tag.id}`);
+          }}
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
@@ -301,17 +333,27 @@ function TagCard({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-10"
-                onClick={() => onMenuToggle(null)}
+                className="fixed inset-0 z-40"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onMenuToggle(null);
+                }}
               />
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                initial={{ opacity: 0, scale: 0.95, y: 5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: -5 }}
-                className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                className="absolute bottom-full right-0 z-50 mb-1 w-36 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
               >
                 <button
+                  type="button"
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     onMenuToggle(null);
                     onEdit(tag);
@@ -322,7 +364,9 @@ function TagCard({
                   Edit
                 </button>
                 <button
+                  type="button"
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     onMenuToggle(null);
                     onDelete(tag);
