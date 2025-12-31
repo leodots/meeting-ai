@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 import { formatDuration, formatTimestamp } from "@/lib/utils/format";
 import { toast } from "sonner";
 import { refreshProjects } from "@/lib/hooks/use-projects";
+import { useDeferredLoading } from "@/lib/hooks/use-deferred-loading";
 
 interface Project {
   id: string;
@@ -124,6 +125,7 @@ export default function MeetingDetailPage({
   const router = useRouter();
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [loading, setLoading] = useState(true);
+  const showSkeleton = useDeferredLoading(loading);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "transcript">(
     "overview"
@@ -462,6 +464,9 @@ export default function MeetingDetailPage({
   }
 
   if (loading) {
+    if (!showSkeleton) {
+      return <PageContainer><div /></PageContainer>;
+    }
     return (
       <PageContainer>
         <SkeletonMeetingDetail />

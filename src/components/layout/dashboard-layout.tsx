@@ -35,7 +35,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
           </Suspense>
           <div className="flex flex-1 flex-col overflow-hidden">
-            <Header onMenuClick={() => setSidebarOpen(true)} />
+            <Header onMenuClick={() => setSidebarOpen((prev) => !prev)} />
             <div className="flex-1 overflow-auto">{children}</div>
           </div>
         </div>

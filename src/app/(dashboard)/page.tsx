@@ -18,6 +18,7 @@ import { SkeletonCard } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/utils/format";
 import { statusConfig } from "@/lib/config/status";
+import { useDeferredLoading } from "@/lib/hooks/use-deferred-loading";
 
 interface Stats {
   totalMeetings: number;
@@ -35,6 +36,7 @@ interface RecentMeeting {
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
+  const showSkeleton = useDeferredLoading(loading);
   const [stats, setStats] = useState<Stats>({
     totalMeetings: 0,
     totalHours: 0,
@@ -133,13 +135,14 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Meetings or Empty State */}
-        {loading ? (
+        {showSkeleton && (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <SkeletonCard key={i} />
             ))}
           </div>
-        ) : recentMeetings.length > 0 ? (
+        )}
+        {!loading && (recentMeetings.length > 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -238,7 +241,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </motion.div>
-        )}
+        ))}
 
         {/* Quick Tips */}
         <motion.div

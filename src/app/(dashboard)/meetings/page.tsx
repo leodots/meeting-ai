@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/utils/format";
 import { statusConfig } from "@/lib/config/status";
 import { toast } from "sonner";
+import { useDeferredLoading } from "@/lib/hooks/use-deferred-loading";
 
 interface Project {
   id: string;
@@ -72,6 +73,7 @@ export default function MeetingsPage() {
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const showSkeleton = useDeferredLoading(loading);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -367,7 +369,7 @@ export default function MeetingsPage() {
         </div>
 
         {/* Loading State */}
-        {loading && <SkeletonMeetingList count={5} />}
+        {showSkeleton && <SkeletonMeetingList count={5} />}
 
         {/* Error State */}
         {error && !loading && (
