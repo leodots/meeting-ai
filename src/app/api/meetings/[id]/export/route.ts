@@ -221,7 +221,7 @@ export async function GET(
 
     const transcriptData = meeting.transcript
       ? {
-          utterances: meeting.transcript.utterances.map((u) => ({
+          utterances: meeting.transcript.utterances.map((u: Utterance) => ({
             text: u.text,
             startTime: u.startTime,
             speaker: {
@@ -238,7 +238,7 @@ export async function GET(
       duration: meeting.duration,
       uploadedAt: meeting.uploadedAt,
       processedAt: meeting.processedAt,
-      speakers: meeting.speakers.map((s) => ({
+      speakers: meeting.speakers.map((s: Speaker) => ({
         speakerIndex: s.speakerIndex,
         label: s.label,
       })),
@@ -276,7 +276,7 @@ export async function GET(
         duration: meeting.duration,
         uploadedAt: meeting.uploadedAt,
         processedAt: meeting.processedAt,
-        speakers: meeting.speakers.map((s) => ({
+        speakers: meeting.speakers.map((s: Speaker) => ({
           speakerIndex: s.speakerIndex,
           label: s.label,
         })),
