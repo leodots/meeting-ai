@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "../../../../auth";
 import { prisma } from "@/lib/db/prisma";
+import { Prisma, ProcessingStatus } from "@prisma/client";
 
 // GET /api/meetings - List all meetings
 export async function GET(request: NextRequest) {
@@ -14,13 +15,17 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const status = searchParams.get("status");
+    const parsedStatus =
+      status && Object.values(ProcessingStatus).includes(status as ProcessingStatus)
+        ? (status as ProcessingStatus)
+        : undefined;
     const projectId = searchParams.get("project");
     const tagId = searchParams.get("tag");
     const favorite = searchParams.get("favorite");
 
-    const where = {
+    const where: Prisma.MeetingWhereInput = {
       userId: session.user.id,
-      ...(status && { status: status as any }),
+      ...(parsedStatus && { status: parsedStatus }),
       ...(projectId && { projectId }),
       ...(tagId && {
         tags: {

@@ -2,14 +2,20 @@
 
 import { motion } from "motion/react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 
-const ThemeSwitcher = () => {
-  const [mounted, setMounted] = useState(false);
-  const { resolvedTheme, setTheme } = useTheme();
+const subscribe = () => () => {};
+const getMountedSnapshot = () => true;
+const getServerSnapshot = () => false;
 
-  useEffect(() => setMounted(true), []);
+const ThemeSwitcher = () => {
+  const mounted = useSyncExternalStore(
+    subscribe,
+    getMountedSnapshot,
+    getServerSnapshot
+  );
+  const { resolvedTheme, setTheme } = useTheme();
 
   const toggleTheme = (event: React.MouseEvent<HTMLButtonElement>) => {
     const newTheme = resolvedTheme === "dark" ? "light" : "dark";
