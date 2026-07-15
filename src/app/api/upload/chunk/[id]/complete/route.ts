@@ -11,7 +11,11 @@ import {
   readChunkedUploadMetadata,
   removeChunkedUpload,
 } from "@/lib/server/chunked-upload";
-import { createMeetingFromStoredFile, getUploadDir } from "@/lib/server/meetings";
+import {
+  createMeetingFromStoredFile,
+  getUploadDir,
+  UploadValidationError,
+} from "@/lib/server/meetings";
 
 export async function POST(
   request: NextRequest,
@@ -74,6 +78,13 @@ export async function POST(
       message: "File uploaded successfully",
     });
   } catch (error) {
+    if (error instanceof UploadValidationError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      );
+    }
+
     console.error("Chunked upload completion failed:", error);
     return NextResponse.json(
       { error: "Failed to complete upload" },
@@ -81,4 +92,3 @@ export async function POST(
     );
   }
 }
-

@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "../../../../auth";
 import { apiRateLimiter, RATE_LIMITS } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
-import { createMeetingFromUpload, validateAudioUpload } from "@/lib/server/meetings";
+import {
+  createMeetingFromUpload,
+  UploadValidationError,
+  validateAudioUpload,
+} from "@/lib/server/meetings";
 
 export async function POST(request: NextRequest) {
   try {
@@ -73,6 +77,13 @@ export async function POST(request: NextRequest) {
       message: "File uploaded successfully",
     });
   } catch (error) {
+    if (error instanceof UploadValidationError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      );
+    }
+
     log.error("Upload failed", error);
     return NextResponse.json(
       { error: "Failed to upload file" },
