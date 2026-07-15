@@ -60,6 +60,7 @@ const acceptedFormats = {
 
 const maxUploadSizeMb = getPublicMaxUploadSizeMb();
 const maxUploadSizeBytes = maxUploadSizeMb * 1024 * 1024;
+const largeUploadThresholdBytes = 80 * 1024 * 1024;
 
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 Bytes";
@@ -184,6 +185,60 @@ export default function NewMeetingPage() {
 
   const [uploadStage, setUploadStage] = useState<"idle" | "uploading" | "processing">("idle");
 
+  const uploadLargeFile = async (data: FormData) => {
+    const initResponse = await fetch("/api/upload/chunk/init", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: file!.name,
+        mimeType: file!.type,
+        fileSize: file!.size,
+        title: data.title,
+        description: data.description || null,
+        aiInstructions: data.aiInstructions || null,
+        projectId: selectedProject?.id || null,
+        tagIds: selectedTags.map((t) => t.id),
+      }),
+    });
+
+    if (!initResponse.ok) {
+      const errorData = await initResponse.json();
+      throw new Error(errorData.error || "Failed to initialize upload");
+    }
+
+    const upload = await initResponse.json();
+
+    for (let chunkIndex = 0; chunkIndex < upload.totalChunks; chunkIndex += 1) {
+      const start = chunkIndex * upload.chunkSize;
+      const end = Math.min(start + upload.chunkSize, file!.size);
+      const chunk = file!.slice(start, end);
+      const chunkData = new FormData();
+      chunkData.append("chunk", chunk);
+      chunkData.append("chunkIndex", String(chunkIndex));
+
+      const chunkResponse = await fetch(`/api/upload/chunk/${upload.uploadId}`, {
+        method: "POST",
+        body: chunkData,
+      });
+
+      if (!chunkResponse.ok) {
+        const errorData = await chunkResponse.json();
+        throw new Error(errorData.error || "Failed to upload chunk");
+      }
+    }
+
+    const completeResponse = await fetch(`/api/upload/chunk/${upload.uploadId}/complete`, {
+      method: "POST",
+    });
+
+    if (!completeResponse.ok) {
+      const errorData = await completeResponse.json();
+      throw new Error(errorData.error || "Failed to complete upload");
+    }
+
+    return completeResponse.json();
+  };
+
   const onSubmit = async (data: FormData) => {
     if (!file) {
       setUploadError("Please select an audio file to upload.");
@@ -195,35 +250,41 @@ export default function NewMeetingPage() {
     setUploadError(null);
 
     try {
-      // Create FormData
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("title", data.title);
-      if (data.description) {
-        formData.append("description", data.description);
-      }
-      if (data.aiInstructions) {
-        formData.append("aiInstructions", data.aiInstructions);
-      }
-      if (selectedProject) {
-        formData.append("projectId", selectedProject.id);
-      }
-      if (selectedTags.length > 0) {
-        formData.append("tagIds", JSON.stringify(selectedTags.map((t) => t.id)));
-      }
+      let result: { id: string };
 
-      // Upload file
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      if (file.size > largeUploadThresholdBytes) {
+        result = await uploadLargeFile(data);
+      } else {
+        // Create FormData
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("title", data.title);
+        if (data.description) {
+          formData.append("description", data.description);
+        }
+        if (data.aiInstructions) {
+          formData.append("aiInstructions", data.aiInstructions);
+        }
+        if (selectedProject) {
+          formData.append("projectId", selectedProject.id);
+        }
+        if (selectedTags.length > 0) {
+          formData.append("tagIds", JSON.stringify(selectedTags.map((t) => t.id)));
+        }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to upload file");
+        // Upload file
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to upload file");
+        }
+
+        result = await response.json();
       }
-
-      const result = await response.json();
 
       // Start processing automatically
       setUploadStage("processing");
