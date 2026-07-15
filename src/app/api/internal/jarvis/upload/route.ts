@@ -1,33 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "../../../../auth";
-import { apiRateLimiter, RATE_LIMITS } from "@/lib/rate-limit";
+import { prisma } from "@/lib/db/prisma";
 import { log } from "@/lib/logger";
+import { processMeeting } from "@/lib/services/processing";
+import { getBearerToken, isValidInternalToken } from "@/lib/server/internal-auth";
 import { createMeetingFromUpload, validateAudioUpload } from "@/lib/server/meetings";
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user?.id) {
+    const token = getBearerToken(request.headers.get("authorization"));
+    if (!isValidInternalToken(token)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Rate limit uploads per user
-    const rateLimitResult = apiRateLimiter.check(
-      `upload:${session.user.id}`,
-      RATE_LIMITS.upload.limit,
-      RATE_LIMITS.upload.windowMs
-    );
-
-    if (!rateLimitResult.success) {
-      log.rateLimitExceeded(session.user.id, "upload");
+    const userEmail = process.env.JARVIS_UPLOAD_USER_EMAIL || process.env.AUTH_EMAIL;
+    if (!userEmail) {
       return NextResponse.json(
-        { error: `Upload limit reached. Try again in ${rateLimitResult.resetIn} seconds.` },
-        { status: 429, headers: { "Retry-After": String(rateLimitResult.resetIn) } }
+        { error: "JARVIS_UPLOAD_USER_EMAIL or AUTH_EMAIL must be configured" },
+        { status: 500 }
       );
     }
 
-    // Parse form data
+    const user = await prisma.user.findUnique({ where: { email: userEmail } });
+    if (!user) {
+      return NextResponse.json(
+        { error: `Upload user not found: ${userEmail}` },
+        { status: 404 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const title = formData.get("title") as string | null;
@@ -35,29 +35,24 @@ export async function POST(request: NextRequest) {
     const aiInstructions = formData.get("aiInstructions") as string | null;
     const projectId = formData.get("projectId") as string | null;
     const tagIdsRaw = formData.get("tagIds") as string | null;
-    const tagIds = tagIdsRaw ? JSON.parse(tagIdsRaw) as string[] : [];
+    const autoProcess = formData.get("autoProcess") !== "false";
+    const tagIds = tagIdsRaw ? (JSON.parse(tagIdsRaw) as string[]) : [];
 
-    // Validate file
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
     const validationError = validateAudioUpload(file);
     if (validationError) {
-      return NextResponse.json(
-        { error: validationError },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
-    // Validate title
     if (!title || title.trim().length === 0) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
-    // Create meeting record in database (language will be detected during transcription)
     const meeting = await createMeetingFromUpload({
-      userId: session.user.id,
+      userId: user.id,
       file,
       title,
       description,
@@ -66,17 +61,26 @@ export async function POST(request: NextRequest) {
       tagIds,
     });
 
-    log.fileUpload(file.name, file.size, session.user.id);
+    log.fileUpload(file.name, file.size, user.id);
+
+    if (autoProcess) {
+      processMeeting(meeting.id).catch((error) => {
+        console.error(`Internal upload processing failed for ${meeting.id}:`, error);
+      });
+    }
 
     return NextResponse.json({
       id: meeting.id,
-      message: "File uploaded successfully",
+      status: meeting.status,
+      url: `/meetings/${meeting.id}`,
+      processingStarted: autoProcess,
     });
   } catch (error) {
-    log.error("Upload failed", error);
+    log.error("Internal Jarvis upload failed", error);
     return NextResponse.json(
       { error: "Failed to upload file" },
       { status: 500 }
     );
   }
 }
+

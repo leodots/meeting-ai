@@ -4,7 +4,7 @@ A self-hosted meeting transcription and analysis platform. Upload audio recordin
 
 ## Features
 
-- **Audio Transcription** — Supports MP3, M4A, and WAV files up to 100MB
+- **Audio Transcription** — Supports MP3, M4A, WAV, and OGG files up to 300MB
 - **Speaker Diarization** — Automatically identifies and labels different speakers
 - **Language Detection** — Supports 99 languages with automatic detection
 - **AI Analysis** — Generates summaries, key points, topics, and action items

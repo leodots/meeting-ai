@@ -25,6 +25,7 @@ import { PageContainer } from "@/components/layout";
 import { ProjectSelector, TagSelector } from "@/components/organization";
 import { cn } from "@/lib/utils";
 import { refreshProjects } from "@/lib/hooks/use-projects";
+import { getPublicMaxUploadSizeMb } from "@/lib/config/upload";
 
 interface Project {
   id: string;
@@ -53,7 +54,12 @@ const acceptedFormats = {
   "audio/x-m4a": [".m4a"],
   "audio/wav": [".wav"],
   "audio/wave": [".wav"],
+  "audio/ogg": [".ogg"],
+  "audio/opus": [".opus"],
 };
+
+const maxUploadSizeMb = getPublicMaxUploadSizeMb();
+const maxUploadSizeBytes = maxUploadSizeMb * 1024 * 1024;
 
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 Bytes";
@@ -158,13 +164,13 @@ export default function NewMeetingPage() {
     onDrop,
     accept: acceptedFormats,
     maxFiles: 1,
-    maxSize: 100 * 1024 * 1024, // 100MB
+    maxSize: maxUploadSizeBytes,
     onDropRejected: (rejections) => {
       const rejection = rejections[0];
       if (rejection.errors[0]?.code === "file-too-large") {
-        setUploadError("File is too large. Maximum size is 100MB.");
+        setUploadError(`File is too large. Maximum size is ${maxUploadSizeMb}MB.`);
       } else if (rejection.errors[0]?.code === "file-invalid-type") {
-        setUploadError("Invalid file type. Please upload an m4a, mp3, or wav file.");
+        setUploadError("Invalid file type. Please upload an m4a, mp3, wav, or ogg file.");
       } else {
         setUploadError("Failed to upload file. Please try again.");
       }
@@ -300,7 +306,7 @@ export default function NewMeetingPage() {
                           : "Drag & drop your audio file here"}
                       </p>
                       <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        or click to browse (m4a, mp3, wav up to 100MB)
+                        or click to browse (m4a, mp3, wav, ogg up to {maxUploadSizeMb}MB)
                       </p>
                     </div>
                   </motion.div>
