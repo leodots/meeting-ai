@@ -3,7 +3,11 @@ import { prisma } from "@/lib/db/prisma";
 import { log } from "@/lib/logger";
 import { processMeeting } from "@/lib/services/processing";
 import { getBearerToken, isValidInternalToken } from "@/lib/server/internal-auth";
-import { createMeetingFromUpload, validateAudioUpload } from "@/lib/server/meetings";
+import {
+  createMeetingFromUpload,
+  UploadValidationError,
+  validateAudioUpload,
+} from "@/lib/server/meetings";
 
 export async function POST(request: NextRequest) {
   try {
@@ -76,6 +80,13 @@ export async function POST(request: NextRequest) {
       processingStarted: autoProcess,
     });
   } catch (error) {
+    if (error instanceof UploadValidationError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      );
+    }
+
     log.error("Internal Jarvis upload failed", error);
     return NextResponse.json(
       { error: "Failed to upload file" },
@@ -83,4 +94,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

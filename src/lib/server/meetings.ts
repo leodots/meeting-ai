@@ -33,6 +33,13 @@ export interface CreateMeetingFromStoredFileInput {
   tagIds?: string[];
 }
 
+export class UploadValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UploadValidationError";
+  }
+}
+
 export function getUploadDir(): string {
   return UPLOAD_DIR;
 }
@@ -94,6 +101,7 @@ export async function createMeetingFromStoredFile(input: CreateMeetingFromStored
     projectId,
     tagIds = [],
   } = input;
+  const validatedTagIds = await validateOrganizationOwnership(userId, projectId, tagIds);
 
   return prisma.meeting.create({
     data: {
@@ -107,13 +115,45 @@ export async function createMeetingFromStoredFile(input: CreateMeetingFromStored
       mimeType,
       projectId: projectId || null,
       tags:
-        tagIds.length > 0
+        validatedTagIds.length > 0
           ? {
-              create: tagIds.map((tagId) => ({
+              create: validatedTagIds.map((tagId) => ({
                 tag: { connect: { id: tagId } },
               })),
             }
           : undefined,
     },
   });
+}
+
+async function validateOrganizationOwnership(
+  userId: string,
+  projectId: string | null | undefined,
+  tagIds: string[]
+) {
+  if (projectId) {
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId },
+      select: { id: true },
+    });
+
+    if (!project) {
+      throw new UploadValidationError("Invalid project selected");
+    }
+  }
+
+  const uniqueTagIds = [...new Set(tagIds.filter(Boolean))];
+  if (uniqueTagIds.length === 0) {
+    return uniqueTagIds;
+  }
+
+  const ownedTags = await prisma.tag.count({
+    where: { id: { in: uniqueTagIds }, userId },
+  });
+
+  if (ownedTags !== uniqueTagIds.length) {
+    throw new UploadValidationError("Invalid tag selected");
+  }
+
+  return uniqueTagIds;
 }
